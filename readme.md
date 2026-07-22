@@ -3,7 +3,7 @@
 
 This repository serves as the unalterable, time-stamped legal ledger for the Digital Governance Framework (DGF) Version 1.0. 
 
-*   **Interactive Searchable Portal:** [https://gitbook.io](https://gitbook.io)
+*   **Interactive Searchable Portal:** [https://dgf.gitbook.io/digital-governance-framework/](https://dgf.gitbook.io/digital-governance-framework/)
 *   **Licensing:** Protected under Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0).
 
 ---
