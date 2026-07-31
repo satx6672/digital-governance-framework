@@ -32,7 +32,8 @@ Facilitates information exchange and coordinated response across multiple digita
 *   **Sub-Protocol 4.6.4: Provisional Tiering & Confidence-Dampened Enforcement**
     To prevent automated cross-platform false-positive matches from executing severe, unreviewed restrictions on innocent actors, and to ensure the burden of proof remains on the infrastructure rather than the user, the framework codifies a strict Provisional Tiering and Response-Scoping Protocol that establishes an absolute boundary between Provisional Containment Actions (automated, localized, real-speed) and Absolute Enforcement Actions (gated by human/institutional consensus), is limited to provisional safety modifications (e.g., compulsory localized challenge verification prompts or temporary, auto-expiring interaction zones), and applies an automated confidence dampener to the SRV payload, reducing its propagation velocity across the ledger and shielding the innocent user from systemic cascade errors.
 *   **Sub-Protocol 4.6.5: Token Separation & Directional Classifier Specifications**
-    To eliminate implementation ambiguity and resolve underlying structural tensions regarding classifier auditing, clock overlap, and containment naming conventions, the Cross-System Coordination Engine enforces three absolute cryptographic and procedural constraints using using Graph-Topology Directionality Analytics, governs data retention and enforcement duration only, and limits automated execution loops reacting to an unconfirmed Cross-System SRV match to reversible, soft containment constraints. 
+    To eliminate implementation ambiguity and resolve underlying structural tensions regarding classifier auditing, clock overlap, and containment naming conventions, the Cross-System Coordination Engine enforces three absolute cryptographic and procedural constraints using using Graph-Topology Directionality Analytics, governs data retention and enforcement duration only, and limits automated execution loops reacting to an unconfirmed Cross-System SRV match to reversible, soft containment constraints.
+    
 *   **Sub-Protocol 4.6.6: Epistemological Boundary Statement on the Statistical Intent Paradox**  
     The framework explicitly differentiates between the *Deterministic Protocol Layer* (entirely verifiable, auditable data-flow code) and the *Statistical Analytics Layer* (`classify_signal_direction()`). Discerning human intent in natural language is recognized as an open, unresolved Machine Learning research frontier vulnerable to adversarial mimicry and precision/recall trade-offs. To neutralize these risks, statistical ML outputs are structurally barred from ever triggering absolute or permanent enforcement.
 
@@ -55,3 +56,49 @@ To resolve operational ambiguities concerning threshold consensus rules, state m
     To eliminate downstream false-positive cascades driven by information compression loss inside normalized Systemic Risk Vectors, Sub-Protocol 4.6.1 integrates an encrypted Asymmetric Context Query (ACQ) layer. Receiving Boundary Engines evaluating an abstract SRV payload may dispatch an automated, single-use cryptographic query back through the originating platform's gate. The originating engine returns an isolated, secondary metadata verification flag confirming structural category syntax (e.g., verifying text strings match code development parameters rather than natural language manipulation scripts) without ever exposing raw text content or violating local user privacy boundaries.
 *   **Sub-Protocol 4.7.3.4: GDPR Compliance & Volatility Purge Controls**  
     Pursuant to GDPR Article 5(1)(e) (Storage Limitation), the 90-day retention floor for Tier 2 and Tier 3 SRV tokens is operationally justified by empirical cross-platform risk migration latencies. If the Trajectory Resiliency Clock hits the 90-day threshold without triggering a cross-vector matching collision, an automated script executes a destructive cryptographic hard-purge—erasing the underlying encryption keys to ensure the data is mathematically unrecoverable. In the event of a high-severity trajectory merge, the locked-open data state is strictly bounded and forced to self-terminate the millisecond the Redress Gate consensus loop reaches a final absolute determination.
+
+#### 4.7.3.1.a: Proactive Secret Sharing (PSS) Communication Protocol
+During an active key-rotation ceremony initialized under Sub-Protocol 4.1.2, the two surviving active nodes initialize a secure, ephemeral communication channel utilizing TLS 1.3 with mandatory mutual authentication (mTLS) to protect tracking mechanics. 
+*   **Share Exchange Mechanics:** The nodes transmit the newly generated polynomial secret shares across the wire wrapped inside *Pedersen Homomorphic Commitments*, preventing plain-text data exposure to network observers.
+*   **Deadlock Recovery:** If network disruption breaks the transmission tunnel, the 72-hour Quorum Timeout automatically extends by a fixed 24-hour grace window. If communication fails to restore within this window, the state machine halts, locking all active tokens and triggering an automated, high-priority administrative alert accompanied by an immutable cryptographic system audit log.
+*   **Backup Node Selection:** The designated backup node is pre-selected via an absolute threshold vote by the Governance Consortium at protocol initialization. Its root public key identity is cryptographically committed to the genesis block of the shared ledger, preventing adversarial node injection.
+
+#### 4.7.3.1.b: Cryptographic Heartbeat Signal Specification
+To enforce the 72-hour Quorum Timeout, each node within the multi-party consensus pool must broadcast an immutable heartbeat token to the ledger matching the following structure:
+*   **Token Payload Format:**
+    ```json
+    HEARTBEAT {
+      node_id: "STRING (Judicial | Consortium | IdentityTrustProvider)",
+      timestamp: "INT64 (Unix Epoch Time)",
+      nonce: "UINT64 (Cryptographic Random Variable)",
+      signature: "BYTES (RSA-3072-PSS over SHA-256 hash of payload)"
+    }
+    ```
+*   **Interval & Thresholds:** Heartbeats must fire at a strict interval of every twenty-four (24) hours. Receipt of a verified, cryptographically valid signature resets the offline timeout clock.
+*   **Compromise Detection & Overrides:** A signature verification failure—or a timestamp anomaly indicating replay interference—forces the quorum node to classify that specific node as immediately offline. If a node's heartbeat signature fails validation using its registered public key, the system overrides the standard 72-hour timeout gate and instantly triggers the Proactive Secret Sharing key rotation ceremony within sixty (60) seconds.
+
+#### 4.7.3.2.a: ML Error Tolerance Justification
+The 15% baseline error tolerance ceiling codified in Sub-Protocol 4.7.3.2 is derived from empirical cross-vector benchmarking of multi-modal BERT and fine-tuned Transformer models evaluating coercive dialectics. This baseline is operationally acceptable to platform ecosystems and privacy regulators due to three architectural insulation layers:
+*   **Non-Punitive Enforcement Constraints:** Automated provisional containment gates are limited to low-friction, reversible challenge prompts (`ActionTier.PROVISIONAL_ISOLATION`), satisfying proportional response legal mandates.
+*   **Real-Speed Revocation Overrides:** False positives are structurally insulated by the asynchronous `Consensus.REVOKE_PROVISIONAL` signal path, flushing account friction within minutes of human verification.
+*   **Retraining Ceilings:** If production environment analytics detect the model's accuracy falling below a strict 12% accuracy boundary floor, the system triggers an automated webhook lock, forcing the local Harmonics Engine to pause signal generation and notify the Governance Consortium for mandatory model retraining.
+
+#### 4.7.3.3.a: Asymmetric Context Query (ACQ) Protocol Specification
+The automated query dispatched through the Vector Translation Gate to mitigate information compression loss must comply with the following rigid, constant-size cryptographic definitions:
+*   **Query Payload Format (Encrypted via AES-GCM-256):**
+    ```json
+    ACQ_REQUEST {
+      srv_id: "BYTES (SHA-256 Hash of origin Systemic Risk Vector)",
+      context_type: "ENUM (LINGUISTIC_CATEGORY | TOPOLOGICAL_VELOCITY)",
+      query_hash: "BYTES (Single-Use HMAC-SHA256 Token Verification Tag)"
+    }
+    ```
+*   **Response Payload Format (Encrypted via AES-GCM-256):**
+    ```json
+    ACQ_RESPONSE {
+      category_match: "BOOLEAN (TRUE | FALSE)",
+      confidence_score: "FLOAT32 (Bounded between 0.00 and 1.00)",
+      no_raw_content_included: "BOOLEAN (Hardcoded TRUE)"
+    }
+    ```
+*   **SLA & Attack Mitigation Protocols:** The originating platform's gate must return the response payload within a strict Service Level Agreement (SLA) latency window of less than 100 milliseconds (<100ms) to eliminate execution bottlenecks at the Boundary Engine. To neutralize length-based side-channel inference attacks, all response packets are hardcoded to a fixed, constant bit size padding. The `query_hash` token automatically invalidates upon single runtime evaluation, preventing data replay tracking.
