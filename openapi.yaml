@@ -4,12 +4,26 @@ info:
   version: 1.0.0-mvp
   description: |
     Minimal viable DGF coordination fabric.
-    Aligned with Sub-Protocols M.1–M.10 and W3C DID/VC substrate.
-    Supports human and AI-agent Holders.
+    Defines Continuity, SRV, Provisional actions, and ACQ endpoints.
+    Supports both human and AI-agent Holders via W3C DID/VC.
+  contact:
+    name: DGF Maintainers
+    url: https://github.com/satx6672/digital-governance-framework-   # update if needed
+  license:
+    name: CC BY-NC-SA 4.0
+    url: https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+tags:
+  - name: Identity
+    description: Continuity Reference establishment
+  - name: Coordination
+    description: SRV emission, querying, and ACQ
+  - name: Enforcement
+    description: Provisional actions and revocation
 
 servers:
   - url: https://middleware.dgf.example/v1
-    description: Production relay
+    description: Production Relay
 
 paths:
   /continuity:
