@@ -55,6 +55,7 @@ paths:
           description: Invalid or insufficient presentation
         "503":
           description: Partition / degraded mode – short-lived cache may be used
+          
   examples:
   successfulContinuity:
     summary: Successful Continuity Reference (human or agent)
@@ -95,6 +96,7 @@ paths:
           description: Schema or policy violation
         "429":
           description: Rate limit or emission throttle
+          
   examples:
   humanEmit:
     summary: Human actor SRV emission
@@ -107,7 +109,20 @@ paths:
       emitter: "did:web:platform-a.example"
       actor_type: "human"
       degraded_emission: false
-
+      
+  examples:
+  agentEmit:
+    summary: AI Agent SRV emission
+    value:
+      passport_ref: "cont_9b2e4f1a7c3d8e5f"
+      harm_class: "Class5_FinancialExploitation"
+      severity: "medium"
+      confidence: 0.76
+      timestamp: "2026-08-06T19:14:30Z"
+      emitter: "did:web:platform-a.example"
+      actor_type: "agent"
+      degraded_emission: false
+      
     get:
       summary: Query / subscribe to SRVs
       operationId: querySRV
@@ -166,6 +181,7 @@ paths:
           description: Bound violation or policy rejection
         "409":
           description: Cumulative provisional ceiling exceeded
+          
   examples:
   normalProvisional:
     summary: Normal-mode provisional action
@@ -239,6 +255,7 @@ paths:
                 $ref: "#/components/schemas/ACQTimeoutOrFailure"
         "429":
           description: Single-use violation or rate limit
+          
   examples:
     acqRequest:
       summary: Structural confirmation request
