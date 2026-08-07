@@ -30,7 +30,7 @@ paths:
     post:
       summary: Establish Continuity Reference from Verifiable Presentation
       operationId: establishContinuity
-      description: Get list of users
+      description: Continuity Reference establishment
       tags: 
         - Identity
       requestBody:
@@ -55,12 +55,21 @@ paths:
           description: Invalid or insufficient presentation
         "503":
           description: Partition / degraded mode – short-lived cache may be used
-
+  examples:
+  successfulContinuity:
+    summary: Successful Continuity Reference (human or agent)
+    value:
+      continuity_ref: "cont_7f3a9c2e8b1d4f6a"
+      expires_at: "2026-08-06T23:15:00Z"
+      degraded: false
+      actor_type: "agent"
+      sponsor_did: "did:web:sponsor.example"
+  
   /srv:
     post:
       summary: Emit Systemic Risk Vector
       operationId: emitSRV
-      description: SRV emission, querying, and ACQ
+      description: SRV emission
       tags: 
         - Coordination
       requestBody:
@@ -86,11 +95,25 @@ paths:
           description: Schema or policy violation
         "429":
           description: Rate limit or emission throttle
+  examples:
+  humanEmit:
+    summary: Human actor SRV emission
+    value:
+      passport_ref: "cont_7f3a9c2e8b1d4f6a"
+      harm_class: "Class3_PsychologicalCoercion"
+      severity: "low"
+      confidence: 0.82
+      timestamp: "2026-08-06T19:12:00Z"
+      emitter: "did:web:platform-a.example"
+      actor_type: "human"
+      degraded_emission: false
 
     get:
       summary: Query / subscribe to SRVs
       operationId: querySRV
-      tags: [Coordination]
+      description: SRV emission
+      tags: 
+        - Coordination
       parameters:
         - name: passport_ref
           in: query
@@ -119,7 +142,7 @@ paths:
     post:
       summary: Issue Provisional action
       operationId: issueProvisional
-      description: Provisional accepted
+      description: Provisional action
       tags: 
         - Enforcement
       requestBody:
@@ -143,12 +166,29 @@ paths:
           description: Bound violation or policy rejection
         "409":
           description: Cumulative provisional ceiling exceeded
+  examples:
+  normalProvisional:
+    summary: Normal-mode provisional action
+    value:
+      target_passport_ref: "cont_7f3a9c2e8b1d4f6a"
+      action_type: "CHALLENGE_PROMPT"
+      expiry: "2026-08-07T19:12:00Z"
+      originating_srv_ids:
+        - "srv_01h8x2k9m3p"
+      degraded_mode: false
+      actor_type: "agent"
+      sponsor_notification: true
+      confidence_context:
+        post_dampening_confidence: 0.70
+        dampener_applied: 0.85
 
   /provisional/{provisional_id}/revoke:
     post:
       summary: Revoke an active Provisional
       operationId: revokeProvisional
-      tags: [Enforcement]
+      description: Revocation 
+      tags: 
+        - Enforcement
       parameters:
         - name: provisional_id
           in: path
@@ -171,10 +211,13 @@ paths:
     post:
       summary: Issue Asymmetric Context Query
       operationId: issueACQ
-      tags: [Coordination]
-      description: |
-        Single-use structural confirmation.
-        Timeout = 15 seconds. Maximum one attempt per SRV per consuming platform.
+      description: Querying
+      tags: 
+        - Coordination
+      parameters:  
+        schema:
+          type: string
+          format: rate-limit
       requestBody:
         required: true
         content:
@@ -196,6 +239,16 @@ paths:
                 $ref: "#/components/schemas/ACQTimeoutOrFailure"
         "429":
           description: Single-use violation or rate limit
+  examples:
+    acqRequest:
+      summary: Structural confirmation request
+      value:
+        acq_id: "acq_01h8x2k9m3p4q"
+        srv_id: "srv_01h8x2k9m3p"
+        target_passport_ref: "cont_7f3a9c2e8b1d4f6a"
+        requesting_platform: "did:web:platform-b.example"
+        timestamp: "2026-08-06T19:16:00Z"
+        query_type: "STRUCTURAL_CATEGORY_SYNTAX"
 
 components:
   schemas:
@@ -206,7 +259,7 @@ components:
 
     Timestamp:
       type: string
-      format: date-time
+      format: timestamp
 
     DID:
       type: string
@@ -241,8 +294,7 @@ components:
 
     ActorType:
       type: string
-      enum: [human, agent]
-
+      enum: human, agent
     EmitSRV:
       type: object
       additionalProperties: false
@@ -275,7 +327,7 @@ components:
         degraded_emission:
           type: boolean
           default: false
-
+ 
     IssueProvisional:
       type: object
       additionalProperties: false
