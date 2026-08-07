@@ -51,27 +51,26 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ContinuityResponse"
+              examples:
+                successfulContinuity:
+                  summary: Successful Continuity Reference (human or agent)
+                  value:
+                    continuity_ref: "cont_7f3a9c2e8b1d4f6a"
+                    expires_at: "2026-08-06T23:15:00Z"
+                    degraded: false
+                    actor_type: "agent"
+                    sponsor_did: "did:web:sponsor.example"  
         "400":
           description: Invalid or insufficient presentation
         "503":
           description: Partition / degraded mode – short-lived cache may be used
           
-  examples:
-  successfulContinuity:
-    summary: Successful Continuity Reference (human or agent)
-    value:
-      continuity_ref: "cont_7f3a9c2e8b1d4f6a"
-      expires_at: "2026-08-06T23:15:00Z"
-      degraded: false
-      actor_type: "agent"
-      sponsor_did: "did:web:sponsor.example"
-  
-  /srv:
+    /srv:
     post:
       summary: Emit Systemic Risk Vector
       operationId: emitSRV
       description: SRV emission
-      tags: 
+      tags:
         - Coordination
       requestBody:
         required: true
@@ -79,6 +78,29 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/EmitSRV"
+            examples:
+              humanEmit:
+                summary: Human actor SRV emission
+                value:
+                  passport_ref: "cont_7f3a9c2e8b1d4f6a"
+                  harm_class: "Class3_PsychologicalCoercion"
+                  severity: "low"
+                  confidence: 0.82
+                  timestamp: "2026-08-06T19:12:00Z"
+                  emitter: "did:web:platform-a.example"
+                  actor_type: "human"
+                  degraded_emission: false
+              agentEmit:
+                summary: AI Agent SRV emission
+                value:
+                  passport_ref: "cont_9b2e4f1a7c3d8e5f"
+                  harm_class: "Class5_FinancialExploitation"
+                  severity: "medium"
+                  confidence: 0.76
+                  timestamp: "2026-08-06T19:14:30Z"
+                  emitter: "did:web:platform-a.example"
+                  actor_type: "agent"
+                  degraded_emission: false
       responses:
         "201":
           description: SRV accepted and normalized
@@ -86,7 +108,8 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [srv_id]
+                required:
+                  - srv_id
                 properties:
                   srv_id:
                     type: string
@@ -96,38 +119,12 @@ paths:
           description: Schema or policy violation
         "429":
           description: Rate limit or emission throttle
-          
-  examples:
-  humanEmit:
-    summary: Human actor SRV emission
-    value:
-      passport_ref: "cont_7f3a9c2e8b1d4f6a"
-      harm_class: "Class3_PsychologicalCoercion"
-      severity: "low"
-      confidence: 0.82
-      timestamp: "2026-08-06T19:12:00Z"
-      emitter: "did:web:platform-a.example"
-      actor_type: "human"
-      degraded_emission: false
-      
-  examples:
-  agentEmit:
-    summary: AI Agent SRV emission
-    value:
-      passport_ref: "cont_9b2e4f1a7c3d8e5f"
-      harm_class: "Class5_FinancialExploitation"
-      severity: "medium"
-      confidence: 0.76
-      timestamp: "2026-08-06T19:14:30Z"
-      emitter: "did:web:platform-a.example"
-      actor_type: "agent"
-      degraded_emission: false
-      
+
     get:
       summary: Query / subscribe to SRVs
       operationId: querySRV
-      description: SRV emission
-      tags: 
+      description: Querying SRVs
+      tags:
         - Coordination
       parameters:
         - name: passport_ref
@@ -158,7 +155,7 @@ paths:
       summary: Issue Provisional action
       operationId: issueProvisional
       description: Provisional action
-      tags: 
+      tags:
         - Enforcement
       requestBody:
         required: true
@@ -166,6 +163,21 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/IssueProvisional"
+            examples:
+              normalProvisional:
+                summary: Normal-mode provisional action
+                value:
+                  target_passport_ref: "cont_7f3a9c2e8b1d4f6a"
+                  action_type: "CHALLENGE_PROMPT"
+                  expiry: "2026-08-07T19:12:00Z"
+                  originating_srv_ids:
+                    - "srv_01h8x2k9m3p"
+                  degraded_mode: false
+                  actor_type: "agent"
+                  sponsor_notification: true
+                  confidence_context:
+                    post_dampening_confidence: 0.70
+                    dampener_applied: 0.85
       responses:
         "201":
           description: Provisional accepted
@@ -173,7 +185,8 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [provisional_id]
+                required:
+                  - provisional_id
                 properties:
                   provisional_id:
                     type: string
@@ -181,29 +194,13 @@ paths:
           description: Bound violation or policy rejection
         "409":
           description: Cumulative provisional ceiling exceeded
-          
-  examples:
-  normalProvisional:
-    summary: Normal-mode provisional action
-    value:
-      target_passport_ref: "cont_7f3a9c2e8b1d4f6a"
-      action_type: "CHALLENGE_PROMPT"
-      expiry: "2026-08-07T19:12:00Z"
-      originating_srv_ids:
-        - "srv_01h8x2k9m3p"
-      degraded_mode: false
-      actor_type: "agent"
-      sponsor_notification: true
-      confidence_context:
-        post_dampening_confidence: 0.70
-        dampener_applied: 0.85
 
   /provisional/{provisional_id}/revoke:
     post:
       summary: Revoke an active Provisional
       operationId: revokeProvisional
-      description: Revocation 
-      tags: 
+      description: Revocation of an active Provisional
+      tags:
         - Enforcement
       parameters:
         - name: provisional_id
@@ -227,19 +224,25 @@ paths:
     post:
       summary: Issue Asymmetric Context Query
       operationId: issueACQ
-      description: Querying
-      tags: 
+      description: Structural confirmation query (ACQ)
+      tags:
         - Coordination
-      parameters:  
-        schema:
-          type: string
-          format: rate-limit
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: "#/components/schemas/ACQRequest"
+            examples:
+              acqRequest:
+                summary: Structural confirmation request
+                value:
+                  acq_id: "acq_01h8x2k9m3p4q"
+                  srv_id: "srv_01h8x2k9m3p"
+                  target_passport_ref: "cont_7f3a9c2e8b1d4f6a"
+                  requesting_platform: "did:web:platform-b.example"
+                  timestamp: "2026-08-06T19:16:00Z"
+                  query_type: "STRUCTURAL_CATEGORY_SYNTAX"
       responses:
         "200":
           description: ACQ Response received
@@ -247,6 +250,15 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ACQResponse"
+              examples:
+                acqConfirmed:
+                  summary: Structural confirmation successful
+                  value:
+                    acq_id: "acq_01h8x2k9m3p4q"
+                    srv_id: "srv_01h8x2k9m3p"
+                    status: "CONFIRMED"
+                    timestamp: "2026-08-06T19:16:08Z"
+                    emitter: "did:web:platform-a.example"
         "408":
           description: Timeout – apply extra 0.80 dampener and halved expiry ceiling
           content:
@@ -255,17 +267,6 @@ paths:
                 $ref: "#/components/schemas/ACQTimeoutOrFailure"
         "429":
           description: Single-use violation or rate limit
-          
-  examples:
-    acqRequest:
-      summary: Structural confirmation request
-      value:
-        acq_id: "acq_01h8x2k9m3p4q"
-        srv_id: "srv_01h8x2k9m3p"
-        target_passport_ref: "cont_7f3a9c2e8b1d4f6a"
-        requesting_platform: "did:web:platform-b.example"
-        timestamp: "2026-08-06T19:16:00Z"
-        query_type: "STRUCTURAL_CATEGORY_SYNTAX"
 
 components:
   schemas:
@@ -276,7 +277,7 @@ components:
 
     Timestamp:
       type: string
-      format: timestamp
+      format: date-time
 
     DID:
       type: string
@@ -299,7 +300,10 @@ components:
 
     Severity:
       type: string
-      enum: [low, medium, high]
+      enum:
+        - low
+        - medium
+        - high
 
     ActionType:
       type: string
@@ -311,7 +315,10 @@ components:
 
     ActorType:
       type: string
-      enum: human, agent
+      enum:
+        - human
+        - agent
+
     EmitSRV:
       type: object
       additionalProperties: false
@@ -344,7 +351,7 @@ components:
         degraded_emission:
           type: boolean
           default: false
- 
+
     IssueProvisional:
       type: object
       additionalProperties: false
@@ -372,7 +379,10 @@ components:
               $ref: "#/components/schemas/Confidence"
             dampener_applied:
               type: number
-              enum: [0.85, 0.60, 0.48]
+              enum:
+                - 0.85
+                - 0.60
+                - 0.48
         degraded_mode:
           type: boolean
           default: false
@@ -416,7 +426,10 @@ components:
     ContinuityResponse:
       type: object
       additionalProperties: false
-      required: [continuity_ref, expires_at, degraded]
+      required:
+        - continuity_ref
+        - expires_at
+        - degraded
       properties:
         continuity_ref:
           $ref: "#/components/schemas/ContinuityReference"
@@ -451,7 +464,8 @@ components:
           $ref: "#/components/schemas/Timestamp"
         query_type:
           type: string
-          enum: [STRUCTURAL_CATEGORY_SYNTAX]
+          enum:
+            - STRUCTURAL_CATEGORY_SYNTAX
           default: STRUCTURAL_CATEGORY_SYNTAX
         nonce:
           type: string
@@ -459,7 +473,11 @@ components:
     ACQResponse:
       type: object
       additionalProperties: false
-      required: [acq_id, srv_id, status, timestamp]
+      required:
+        - acq_id
+        - srv_id
+        - status
+        - timestamp
       properties:
         acq_id:
           type: string
@@ -467,7 +485,11 @@ components:
           type: string
         status:
           type: string
-          enum: [CONFIRMED, DENIED, NOT_APPLICABLE, ERROR]
+          enum:
+            - CONFIRMED
+            - DENIED
+            - NOT_APPLICABLE
+            - ERROR
         timestamp:
           $ref: "#/components/schemas/Timestamp"
         emitter:
@@ -480,7 +502,11 @@ components:
     ACQTimeoutOrFailure:
       type: object
       additionalProperties: false
-      required: [acq_id, srv_id, outcome, timestamp]
+      required:
+        - acq_id
+        - srv_id
+        - outcome
+        - timestamp
       properties:
         acq_id:
           type: string
@@ -488,8 +514,15 @@ components:
           type: string
         outcome:
           type: string
-          enum: [TIMEOUT, NETWORK_ERROR, SINGLE_USE_VIOLATION]
+          enum:
+            - TIMEOUT
+            - NETWORK_ERROR
+            - SINGLE_USE_VIOLATION
         timestamp:
+          $ref: "#/components/schemas/Timestamp"
+        applied_extra_dampener:
+          type: number
+          const: 0.80
           $ref: "#/components/schemas/Timestamp"
         applied_extra_dampener:
           type: number
