@@ -30,7 +30,9 @@ paths:
     post:
       summary: Establish Continuity Reference from Verifiable Presentation
       operationId: establishContinuity
-      tags: [Identity]
+      description: Get list of users
+      tags: 
+        - Identity
       requestBody:
         required: true
         content:
@@ -58,7 +60,9 @@ paths:
     post:
       summary: Emit Systemic Risk Vector
       operationId: emitSRV
-      tags: [Coordination]
+      description: SRV emission, querying, and ACQ
+      tags: 
+        - Coordination
       requestBody:
         required: true
         content:
@@ -115,7 +119,9 @@ paths:
     post:
       summary: Issue Provisional action
       operationId: issueProvisional
-      tags: [Enforcement]
+      description: Provisional accepted
+      tags: 
+        - Enforcement
       requestBody:
         required: true
         content:
