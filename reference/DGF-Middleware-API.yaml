@@ -66,8 +66,8 @@ paths:
         "503":
           description: Partition / degraded mode – short-lived cache may be used
           
-    /srv:
-    
+  /srv:
+    get:
       summary: Emit Systemic Risk Vector
       operationId: emitSRV
       description: SRV emission
@@ -128,6 +128,7 @@ paths:
       tags: 
         - Coordination
       parameters:
+        required: true
         - name: passport_ref
           in: query
           schema:
@@ -237,7 +238,7 @@ paths:
           in: path
           required: true
           schema:
-            type: intiger
+            type: number
           description: The user's ID
       requestBody:
         required: true
