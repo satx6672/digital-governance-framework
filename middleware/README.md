@@ -17,6 +17,12 @@ The machine-readable API contract is defined here:
 → [`openapi.yaml`](../openapi/openapi.yaml)  
 *(update the path if your file is located elsewhere)*
 
+## OpenAPI Documentation
+
+The API reference document is viewable here:
+
+→ https://dgf-openapi-v1.redocly.app/openapi
+
 ## AI-Agent Support and W3C DID/VC Compatibility
 
 The Middleware Slice treats **AI agents as first-class Holders**.
