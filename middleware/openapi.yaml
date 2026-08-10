@@ -121,6 +121,7 @@ paths:
         "404":
           description: No matching SRVs found
 
+    
     get:
       summary: Query / subscribe to SRVs
       operationId: querySRV
