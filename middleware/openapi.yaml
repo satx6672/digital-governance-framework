@@ -129,11 +129,6 @@ paths:
       tags: 
         - Coordination
       parameters:
-        - name: harm_class
-          in: query
-          schema:
-            $ref: "#/components/schemas/HarmClass"
-          description: The number of days to include in the response
         - name: since
           in: query
           schema:
