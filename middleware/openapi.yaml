@@ -121,30 +121,6 @@ paths:
         "404":
           description: No matching SRVs found
 
-  /srv:
-    get:
-      summary: Query / subscribe to SRVs
-      operationId: querySRV
-      description: Querying SRVs
-      tags: 
-        - Coordination
-      parameters:
-        - name: since
-          in: query
-          schema:
-            type: string
-            format: date-time
-          description: The number of days to include in the response
-      responses:
-        "200":
-          description: Matching SRVs
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/EmitSRV"
-
   /provisional:
     post:
       summary: Issue Provisional action
