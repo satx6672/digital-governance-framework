@@ -1,0 +1,38 @@
+# redocly.yaml — DGF Middleware Slice
+extends:
+  - recommended
+
+rules:
+  # --- Overrides for current MVP stage ---
+  security-defined: warn                  # No security schemes defined yet
+  no-server-example.com: off              # Using placeholder domain intentionally
+  info-license: warn
+  info-license-strict: warn
+  no-unused-components: warn
+  operation-4xx-response: warn
+  operation-2xx-response: warn
+  tag-description: warn
+  no-invalid-media-type-examples: warn
+  no-invalid-parameter-examples: warn
+  no-invalid-schema-examples: warn
+
+  # --- Keep these as errors (good guardrails) ---
+  no-empty-servers: error
+  no-enum-type-mismatch: error
+  no-example-value-and-externalValue: error
+  no-identical-paths: error
+  no-path-trailing-slash: error
+  no-schema-type-mismatch: error
+  no-server-trailing-slash: error
+  no-server-variables-empty-enum: error
+  no-unresolved-refs: error
+  no-undefined-server-variable: error
+  operation-operationId-unique: error
+  operation-operationId-url-safe: error
+  operation-parameters-unique: error
+  operation-summary: error
+  path-declaration-must-exist: error
+  path-not-include-query: error
+  path-parameters-defined: error
+  spec-components-invalid-map-name: error
+  struct: error
