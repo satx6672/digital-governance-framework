@@ -199,7 +199,6 @@ paths:
       description: Structural confirmation query (ACQ)
       tags:
         - Coordination
-          description: The user's ID
       requestBody:
         required: true
         content:
