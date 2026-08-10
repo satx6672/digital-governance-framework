@@ -4,6 +4,7 @@
 This repository serves as the unalterable, time-stamped legal ledger for the Digital Governance Framework (DGF) Version 1.0. 
 
 *   **Interactive Searchable Portal:** [https://dgf.gitbook.io/digital-governance-framework/](https://dgf.gitbook.io/digital-governance-framework/)
+*   **DGF Middleware Reference Document:** [https://dgf-openapi-v1.redocly.app/](https://dgf-openapi-v1.redocly.app/)
 *   **Licensing:** Protected under Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0).
 
 ---
