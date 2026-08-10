@@ -121,19 +121,14 @@ paths:
         "404":
           description: No matching SRVs found
 
-    
-    
+  /srv:
+    get:
       summary: Query / subscribe to SRVs
       operationId: querySRV
       description: Querying SRVs
       tags: 
         - Coordination
       parameters:
-        - name: passport_ref
-          in: query
-          schema:
-            $ref: "#/components/schemas/ContinuityReference"
-          description: The number of days to include in the response
         - name: harm_class
           in: query
           schema:
