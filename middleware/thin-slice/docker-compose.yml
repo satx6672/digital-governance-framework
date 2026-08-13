@@ -1,0 +1,15 @@
+```yaml
+services:
+  dgf-middleware:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      DGF_DB_PATH: /data/dgf_middleware.db
+      DGF_DEBUG: "0"
+    volumes:
+      - dgf-data:/data
+
+volumes:
+  dgf-data:
+```
