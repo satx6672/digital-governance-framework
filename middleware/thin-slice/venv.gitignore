@@ -12,7 +12,7 @@ git commit -m "v0.1.0-thin-slice-poc: Continuity, SRV, Provisional, Revoke loop"
 
 git tag v0.1.0-thin-slice-poc
 
-git remote add origin https://github.com/satx6672/digital-governance-framework/tree/main/middleware.git
+git remote add origin https://github.com/satx6672/digital-governance-framework/tree/main/middleware/thin-slice
 git push -u origin main
 git push origin v0.1.0-thin-slice-poc
 
