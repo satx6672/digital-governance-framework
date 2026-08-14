@@ -1,0 +1,6 @@
+venv/
+__pycache__/
+*.pyc
+dgf_middleware.db
+test_alt.db
+.env
