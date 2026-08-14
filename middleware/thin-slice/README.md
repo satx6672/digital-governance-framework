@@ -54,6 +54,11 @@ Open: http://127.0.0.1:8000/docs
 
 See `e2e-demo.http` or `e2e-demo.sh` (or the curl sequence in this repo) for Continuity → SRV → Provisional → Revoke.
 
+## Docker
+
+docker build -t dgf-middleware-thin:0.1.0 .
+docker run --rm -p 8000:8000 dgf-middleware-thin:0.1.0
+
 ## API reference
 
 OpenAPI-oriented public docs (design contract):  
