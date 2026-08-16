@@ -126,7 +126,7 @@ The low-severity trajectory retention window in the MVP SHALL be forty-five (45)
 
 All numeric parameters defined in Sub-Protocols M.1 through M.9 are versioned. Any change requires public notice of at least fourteen (14) days, recorded multi-party approval according to the Middleware governance process, and publication of updated reference test vectors.
 
-# DGF Middleware — Thin Slice PoC
+#### DGF Middleware — Thin Slice PoC
 
 Minimal runnable proof of the DGF Middleware coordination loop:
 
@@ -134,7 +134,7 @@ Minimal runnable proof of the DGF Middleware coordination loop:
 
 This is a proof of concept, not production software.
 
-## What works
+##### What works
 
 - `POST /continuity` — issue a Continuity Reference (stores in SQLite)
 - `POST /srv` — emit a Systemic Risk Vector against a valid, unexpired Continuity Reference
@@ -143,7 +143,7 @@ This is a proof of concept, not production software.
 - Expiry checks on Continuity References (410 when expired)
 - Local SQLite storage
 
-## What does not work yet (intentional limits)
+##### What does not work yet (intentional limits)
 
 - No real W3C Verifiable Presentation / DID cryptographic verification (VP is accepted as opaque input)
 - No authentication / authorization on endpoints
@@ -152,12 +152,12 @@ This is a proof of concept, not production software.
 - Debug endpoints only when `DGF_DEBUG=1`
 - Not production-hardened
 
-## Requirements
+##### Requirements
 
 - Python 3.10+
 - Windows / macOS / Linux
 
-## Setup (local)
+##### Setup (local)
 
 ```bash
 python -m venv venv
@@ -170,27 +170,27 @@ uvicorn main:app --reload
 
 Open: http://127.0.0.1:8000/docs
 
-## Environment variables
+##### Environment variables
 
 | Variable | Default | Meaning |
 |----------|---------|---------|
 | `DGF_DB_PATH` | `dgf_middleware.db` | SQLite database file path |
 | `DGF_DEBUG` | `0` | Set to `1` to enable `/debug/*` routes |
 
-## Canonical end-to-end test
+##### Canonical end-to-end test
 
 See `e2e-demo.http` or `e2e-demo.sh` (or the curl sequence in this repo) for Continuity → SRV → Provisional → Revoke.
 
-## Docker
+##### Docker
 
 docker build -t dgf-middleware-thin:0.1.0 .
 docker run --rm -p 8000:8000 dgf-middleware-thin:0.1.0
 
-## API reference
+##### API reference
 
 OpenAPI-oriented public docs (design contract):  
 https://dgf-middleware-slice.redocly.app/
 
-## Version
+##### Version
 
 `v0.1.0-thin-slice-poc` (see Git tags)
