@@ -61,7 +61,7 @@ docker run --rm -p 8000:8000 dgf-middleware-thin:0.1.0
 ### API reference
 
 OpenAPI-oriented public docs (design contract):  
-https://dgf-middleware-slice.redocly.app/
+[https://dgf-openapi-v1.redocly.app/](https://dgf-openapi-v1.redocly.app/)
 
 ### Version
 
