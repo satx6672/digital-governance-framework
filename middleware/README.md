@@ -126,7 +126,6 @@ The low-severity trajectory retention window in the MVP SHALL be forty-five (45)
 
 All numeric parameters defined in Sub-Protocols M.1 through M.9 are versioned. Any change requires public notice of at least fourteen (14) days, recorded multi-party approval according to the Middleware governance process, and publication of updated reference test vectors.
 
-```markdown
 # DGF Middleware — Thin Slice PoC
 
 Minimal runnable proof of the DGF Middleware coordination loop:
