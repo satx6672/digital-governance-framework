@@ -1,4 +1,3 @@
-```markdown
 # DGF Middleware — Thin Slice PoC
 
 Minimal runnable proof of the DGF Middleware coordination loop:
@@ -43,28 +42,28 @@ uvicorn main:app --reload
 
 Open: http://127.0.0.1:8000/docs
 
-## Environment variables
+### Environment variables
 
 | Variable | Default | Meaning |
 |----------|---------|---------|
 | `DGF_DB_PATH` | `dgf_middleware.db` | SQLite database file path |
 | `DGF_DEBUG` | `0` | Set to `1` to enable `/debug/*` routes |
 
-## Canonical end-to-end test
+### Canonical end-to-end test
 
 See `e2e-demo.http` or `e2e-demo.sh` (or the curl sequence in this repo) for Continuity → SRV → Provisional → Revoke.
 
-## Docker
+### Docker
 
 docker build -t dgf-middleware-thin:0.1.0 .
 docker run --rm -p 8000:8000 dgf-middleware-thin:0.1.0
 
-## API reference
+### API reference
 
 OpenAPI-oriented public docs (design contract):  
 https://dgf-middleware-slice.redocly.app/
 
-## Version
+### Version
 
 `v0.1.0-thin-slice-poc` (see Git tags)
 ```
