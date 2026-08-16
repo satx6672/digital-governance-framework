@@ -66,4 +66,3 @@ https://dgf-middleware-slice.redocly.app/
 ### Version
 
 `v0.1.0-thin-slice-poc` (see Git tags)
-```
