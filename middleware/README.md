@@ -176,6 +176,7 @@ Open: http://127.0.0.1:8000/docs
 |----------|---------|---------|
 | `DGF_DB_PATH` | `dgf_middleware.db` | SQLite database file path |
 | `DGF_DEBUG` | `0` | Set to `1` to enable `/debug/*` routes |
+| `DGF_API_KEY` | `(unset)` | If set, require Authorization: Bearer <key> on coordination endpoints |
 
 ### Canonical end-to-end test
 
