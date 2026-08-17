@@ -195,3 +195,11 @@ https://dgf-middleware-slice.redocly.app/
 ### Version
 
 `v0.1.0-thin-slice-poc` (see Git tags)
+
+### Running with auth (demo)
+
+set DGF_API_KEY=your-secret
+set DGF_DEBUG=0
+uvicorn main:app --host 0.0.0.0 --port 8000
+
+Use header: Authorization: Bearer your-secret
