@@ -48,6 +48,7 @@ Open: http://127.0.0.1:8000/docs
 |----------|---------|---------|
 | `DGF_DB_PATH` | `dgf_middleware.db` | SQLite database file path |
 | `DGF_DEBUG` | `0` | Set to `1` to enable `/debug/*` routes |
+| `DGF_API_KEY` | `(unset)` | If set, require Authorization: Bearer <key> on coordination endpoints |
 
 ### Canonical end-to-end test
 
@@ -66,3 +67,11 @@ OpenAPI-oriented public docs (design contract):
 ### Version
 
 `v0.1.0-thin-slice-poc` (see Git tags)
+
+### Running with auth (demo)
+
+set DGF_API_KEY=your-secret
+set DGF_DEBUG=0
+uvicorn main:app --host 0.0.0.0 --port 8000
+
+Use header: Authorization: Bearer your-secret
