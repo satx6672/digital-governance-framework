@@ -1,15 +1,67 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 import os
 import uuid
 import sqlite3
+import logging
+import time
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
 
 app = FastAPI(
     title="DGF Middleware API",
     version="1.0.0-mvp"
 )
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("dgf.middleware")
+
+class RequestLogMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        start = time.perf_counter()
+        response = await call_next(request)
+        elapsed_ms = (time.perf_counter() - start) * 1000
+        logger.info(
+            "%s %s -> %s (%.1fms)",
+            request.method,
+            request.url.path,
+            response.status_code,
+            elapsed_ms,
+        )
+        return response
+
+app.add_middleware(RequestLogMiddleware)
+
+API_KEY = os.getenv("DGF_API_KEY")  # if unset, auth is disabled
+security = HTTPBearer(auto_error=False)
+if API_KEY:
+    logger.info("Auth enabled (DGF_API_KEY is set)")
+else:
+    logger.info("Auth disabled (DGF_API_KEY unset)")
+
+def require_api_key(
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+):
+    """If DGF_API_KEY is set, require Authorization: Bearer <key>."""
+    if not API_KEY:
+        return  # auth disabled
+
+    if credentials is None or credentials.scheme.lower() != "bearer":
+        raise HTTPException(
+            status_code=401,
+            detail="Missing or invalid Authorization header. Use: Bearer <api_key>",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if credentials.credentials != API_KEY:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid API key",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
 DB_NAME = os.getenv("DGF_DB_PATH", "dgf_middleware.db")
 
@@ -57,11 +109,37 @@ def init_db():
             revoked INTEGER DEFAULT 0
         )
     """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS acqs (
+            acq_id TEXT PRIMARY KEY,
+            srv_id TEXT,
+            target_passport_ref TEXT NOT NULL,
+            requesting_platform TEXT,
+            query_type TEXT,
+            status TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            nonce TEXT
+        )
+    """)
 
     conn.commit()
     conn.close()
 
 init_db()
+
+class ACQRequest(BaseModel):
+    srv_id: Optional[str] = None
+    target_passport_ref: str
+    requesting_platform: Optional[str] = None
+    query_type: str = "STRUCTURAL_CATEGORY_SYNTAX"
+    nonce: Optional[str] = None
+
+class ACQResponse(BaseModel):
+    acq_id: str
+    srv_id: Optional[str] = None
+    status: str
+    timestamp: str
+    error_detail: Optional[str] = None
 
 class RevokeProvisionalRequest(BaseModel):
     provisional_id: str
@@ -96,6 +174,34 @@ class ContinuityResponse(BaseModel):
     degraded: bool
     actor_type: str
     sponsor_did: Optional[str] = None
+
+@app.get("/debug/acqs")
+def list_acqs():
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT acq_id, srv_id, target_passport_ref, requesting_platform,
+               query_type, status, created_at, nonce
+        FROM acqs ORDER BY created_at DESC
+        """
+    )
+    rows = cursor.fetchall()
+    conn.close()
+    items = [
+        {
+            "acq_id": r[0],
+            "srv_id": r[1],
+            "target_passport_ref": r[2],
+            "requesting_platform": r[3],
+            "query_type": r[4],
+            "status": r[5],
+            "created_at": r[6],
+            "nonce": r[7],
+        }
+        for r in rows
+    ]
+    return {"count": len(items), "items": items}
 
 @app.get("/debug/provisionals")
 def list_provisionals():
@@ -197,61 +303,11 @@ def read_root():
         "message": "DGF Middleware thin slice is running"
     }
 
-@app.post("/provisional/{provisional_id}/revoke")
-def revoke_provisional(provisional_id: str, request: RevokeProvisionalRequest):
-    if provisional_id != request.provisional_id:
-        raise HTTPException(
-            status_code=400,
-            detail="provisional_id in path and body must match"
-        )
-
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-
-    cursor.execute(
-        """
-        SELECT provisional_id, target_passport_ref, revoked
-        FROM provisionals
-        WHERE provisional_id = ?
-        """,
-        (provisional_id,)
-    )
-    row = cursor.fetchone()
-
-    if row is None:
-        conn.close()
-        raise HTTPException(status_code=404, detail="Provisional not found")
-
-    if row[1] != request.target_passport_ref:
-        conn.close()
-        raise HTTPException(
-            status_code=400,
-            detail="target_passport_ref does not match this Provisional"
-        )
-
-    if row[2] == 1:
-        conn.close()
-        raise HTTPException(status_code=409, detail="Provisional already revoked")
-
-    cursor.execute(
-        """
-        UPDATE provisionals
-        SET revoked = 1
-        WHERE provisional_id = ?
-        """,
-        (provisional_id,)
-    )
-    conn.commit()
-    conn.close()
-
-    return {
-        "status": "revoked",
-        "provisional_id": provisional_id,
-        "reason": request.reason
-    }
-
 @app.post("/continuity", response_model=ContinuityResponse)
-def establish_continuity(request: ContinuityRequest):
+def establish_continuity(
+    request: ContinuityRequest,
+    _: None = Depends(require_api_key),
+):
     if request.verifiablePresentation is None:
         raise HTTPException(status_code=400, detail="verifiablePresentation is required")
 
@@ -287,7 +343,10 @@ def establish_continuity(request: ContinuityRequest):
     }
 
 @app.post("/srv")
-def emit_srv(request: SRVRequest):
+def emit_srv(
+    request: SRVRequest,
+    _: None = Depends(require_api_key),
+):
     # 1. Check that the Continuity Reference exists and is not expired
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
@@ -345,7 +404,10 @@ def emit_srv(request: SRVRequest):
     }
 
 @app.post("/provisional")
-def issue_provisional(request: ProvisionalRequest):
+def issue_provisional(
+    request: ProvisionalRequest,
+    _: None = Depends(require_api_key),
+):
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
 
@@ -406,4 +468,135 @@ def issue_provisional(request: ProvisionalRequest):
 
     return {
         "provisional_id": provisional_id
+    }
+
+@app.post("/provisional/{provisional_id}/revoke")
+def revoke_provisional(
+    provisional_id: str,
+    request: RevokeProvisionalRequest,
+    _: None = Depends(require_api_key),
+):
+    if provisional_id != request.provisional_id:
+        raise HTTPException(
+            status_code=400,
+            detail="provisional_id in path and body must match"
+        )
+
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT provisional_id, target_passport_ref, revoked
+        FROM provisionals
+        WHERE provisional_id = ?
+        """,
+        (provisional_id,)
+    )
+    row = cursor.fetchone()
+
+    if row is None:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Provisional not found")
+
+    if row[1] != request.target_passport_ref:
+        conn.close()
+        raise HTTPException(
+            status_code=400,
+            detail="target_passport_ref does not match this Provisional"
+        )
+
+    if row[2] == 1:
+        conn.close()
+        raise HTTPException(status_code=409, detail="Provisional already revoked")
+
+    cursor.execute(
+        """
+        UPDATE provisionals
+        SET revoked = 1
+        WHERE provisional_id = ?
+        """,
+        (provisional_id,)
+    )
+    conn.commit()
+    conn.close()
+
+    return {
+        "status": "revoked",
+        "provisional_id": provisional_id,
+        "reason": request.reason
+    }
+
+@app.post("/acq", response_model=ACQResponse)
+def issue_acq(
+    request: ACQRequest,
+    _: None = Depends(require_api_key),
+):
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+
+    # Continuity must exist and not be expired
+    cursor.execute(
+        """
+        SELECT expires_at FROM continuity_references
+        WHERE continuity_ref = ?
+        """,
+        (request.target_passport_ref,),
+    )
+    row = cursor.fetchone()
+
+    if row is None:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Continuity Reference not found")
+
+    expires_at = datetime.fromisoformat(row[0].replace("Z", "+00:00"))
+    now = datetime.now(timezone.utc)
+    if now > expires_at:
+        conn.close()
+        raise HTTPException(status_code=410, detail="Continuity Reference has expired")
+
+    # Thin policy: if srv_id provided, require it to exist
+    if request.srv_id:
+        cursor.execute("SELECT srv_id FROM srvs WHERE srv_id = ?", (request.srv_id,))
+        if cursor.fetchone() is None:
+            conn.close()
+            return {
+                "acq_id": f"acq_{uuid.uuid4().hex[:16]}",
+                "srv_id": request.srv_id,
+                "status": "DENIED",
+                "timestamp": now.isoformat().replace("+00:00", "Z"),
+                "error_detail": "srv_id not found",
+            }
+
+    acq_id = f"acq_{uuid.uuid4().hex[:16]}"
+    status = "CONFIRMED"
+    created_at = now.isoformat().replace("+00:00", "Z")
+
+    cursor.execute(
+        """
+        INSERT INTO acqs (
+            acq_id, srv_id, target_passport_ref, requesting_platform,
+            query_type, status, created_at, nonce
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            acq_id,
+            request.srv_id,
+            request.target_passport_ref,
+            request.requesting_platform,
+            request.query_type,
+            status,
+            created_at,
+            request.nonce,
+        ),
+    )
+    conn.commit()
+    conn.close()
+
+    return {
+        "acq_id": acq_id,
+        "srv_id": request.srv_id,
+        "status": status,
+        "timestamp": created_at,
+        "error_detail": None,
     }
