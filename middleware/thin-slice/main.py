@@ -14,6 +14,7 @@ from starlette.requests import Request
 app = FastAPI(
     title="DGF Middleware API",
     version="1.0.0-mvp"
+)    
     
 app.add_middleware(
     CORSMiddleware,
