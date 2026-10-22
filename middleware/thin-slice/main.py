@@ -42,6 +42,33 @@ class RequestLogMiddleware(BaseHTTPMiddleware):
         )
         return response
 
+from fastapi.responses import PlainTextResponse
+
+@app.get("/privacy", response_class=PlainTextResponse)
+def privacy_policy():
+    return """DGF Middleware Privacy Policy
+
+Effective Date: October 22, 2026
+
+1. Core Philosophy: Local-First Architecture
+DGF Middleware ("the Extension") operates on a localized, edge-proxy architecture designed to protect user privacy. We do not collect, harvest, sell, or monetize personally identifiable information (PII), browsing history, or personal data. 
+
+2. How We Use Permissions
+The Extension requires specific browser permissions to function as a systemic defense layer:
+* declarativeNetRequest: This permission is strictly utilized to intercept and drop network connections from known third-party data trackers, analytics engines, and telemetry scripts before they load in your browser. We do not use this permission to read or modify the content of the websites you visit.
+* storage: Used exclusively to store local settings, such as your Active Continuity Reference token, UI preferences (like Dark Mode), and your local telemetry counters (e.g., Trackers Blocked, Data Saved).
+
+3. Telemetry and Data Logging
+When the Extension intercepts a tracking attempt, it does not record the URL you are visiting or your IP address. Instead, the system translates the blocked event into an abstract Systemic Risk Vector (SRV). 
+* An SRV contains only mathematical and categorical data regarding the type of threat intercepted (e.g., "Class1_DataExfiltration") and the cryptographic continuity token.
+* This sanitized telemetry is securely transmitted to our backend infrastructure solely to maintain the operational reference ledger and improve systemic threat detection.
+
+4. Data Sharing and Third Parties
+We do not share, sell, rent, or trade any extension data with third-party advertisers, data brokers, or marketing platforms. The localized proxy is designed explicitly to disrupt these data-harvesting pipelines, not contribute to them.
+
+5. User Consent and Control
+By installing and using the Extension, you consent to the local interception of network trackers as defined by the Extension's rule matrix. You may uninstall the Extension at any time via your browser's extension management page, which will immediately cease all local proxy functions and telemetry emissions."""
+
 app.add_middleware(RequestLogMiddleware)
 
 API_KEY = os.getenv("DGF_API_KEY")  # if unset, auth is disabled
