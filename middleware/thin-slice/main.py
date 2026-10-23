@@ -105,11 +105,12 @@ engine = create_async_engine(
 # 3. Create the session factory for your endpoints
 async_session = sessionmaker(
     engine, class_=AsyncSession, expire_on_commit=False
+)
+
 # Dependency to get the async database session
 async def get_db():
     async with async_session() as session:
         yield session
-)
 
 # 4. Asynchronous Database Initialization for all tables
 async def init_db():
