@@ -14,6 +14,9 @@ from contextlib import asynccontextmanager
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import text
+from sqlalchemy.orm import declarative_base
+
+Base = declarative_base()
 
 # Update your FastAPI app initialization to include the lifespan
 from contextlib import asynccontextmanager
