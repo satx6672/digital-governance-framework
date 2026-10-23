@@ -27,7 +27,6 @@ async def lifespan(app: FastAPI):
 
 # 2. Now Python knows what 'lifespan' is when it creates the app
 app = FastAPI(lifespan=lifespan)
-))
 
 app.add_middleware(
     CORSMiddleware,
