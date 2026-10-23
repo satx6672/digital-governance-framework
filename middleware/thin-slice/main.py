@@ -15,10 +15,18 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import text
 
 # Update your FastAPI app initialization to include the lifespan
-app = FastAPI(
-    title="DGF Middleware API",
-    version="1.0.0-mvp",
-    lifespan=lifespan
+from contextlib import asynccontextmanager
+
+# 1. Define the startup logic (creating tables) BEFORE the app is created
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    async with engine.begin() as conn:
+        # This builds your PostgreSQL tables if they don't exist yet
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+
+# 2. Now Python knows what 'lifespan' is when it creates the app
+app = FastAPI(lifespan=lifespan)
 )
 
 app.add_middleware(
