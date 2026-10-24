@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
@@ -350,6 +351,22 @@ def read_root():
         "status": "ok",
         "message": "DGF Middleware thin slice is running"
     }
+
+@app.get("/privacy", response_class=HTMLResponse)
+async def privacy_policy():
+    return """
+    <html>
+        <head><title>Privacy Policy - DGF Middleware</title></head>
+        <body style="font-family: sans-serif; max-width: 800px; margin: 40px auto; line-height: 1.6;">
+            <h2>Privacy Policy for DGF Middleware Edge Proxy</h2>
+            <p><strong>Last Updated: October 2026</strong></p>
+            <p><strong>1. Data Collection:</strong> DGF Middleware processes browsing network requests locally to block trackers. Basic telemetry regarding blocked trackers (Multiplicity Principle data) is transmitted securely to our cloud engine strictly for operational continuity.</p>
+            <p><strong>2. Data Usage & Sharing:</strong> We do not sell, rent, or monetize your personal data, browsing history, or tracking analytics to third parties.</p>
+            <p><strong>3. Permissions:</strong> The extension requires permissions such as <code>declarativeNetRequest</code> and <code>storage</code> solely to function securely as an edge proxy.</p>
+            <p><strong>4. Contact:</strong> For any privacy-related questions, please contact the developer via the Chrome Web Store support tab.</p>
+        </body>
+    </html>
+    """
 
 @app.post("/continuity", response_model=ContinuityResponse)
 async def establish_continuity(
