@@ -134,16 +134,13 @@ This is a proof of concept, not production software.
 - `POST /srv` — emit a Systemic Risk Vector against a valid, unexpired Continuity Reference
 - `POST /provisional` — issue a Provisional action
 - `POST /provisional/{provisional_id}/revoke` — revoke a Provisional
+- `POST /acq` — issue an acq action
 - Expiry checks on Continuity References (410 when expired)
 - Local SQLite storage
 
 ## What does not work yet (intentional limits)
 
-- No real W3C Verifiable Presentation / DID cryptographic verification (VP is accepted as opaque input)
-- No authentication / authorization on endpoints
-- No ACQ endpoint
 - No full degraded-mode policy logic (flags only)
-- Debug endpoints only when `DGF_DEBUG=1`
 - Not production-hardened
 
 ## Requirements
