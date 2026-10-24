@@ -225,18 +225,14 @@ class ContinuityResponse(BaseModel):
     sponsor_did: Optional[str] = None
 
 @app.get("/debug/acqs")
-def list_acqs():
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute(
-        """
+async def list_acqs(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(text("""
         SELECT acq_id, srv_id, target_passport_ref, requesting_platform,
                query_type, status, created_at, nonce
         FROM acqs ORDER BY created_at DESC
-        """
-    )
-    rows = cursor.fetchall()
-    conn.close()
+    """))
+    rows = result.fetchall()
+    
     items = [
         {
             "acq_id": r[0],
@@ -253,17 +249,14 @@ def list_acqs():
     return {"count": len(items), "items": items}
 
 @app.get("/debug/provisionals")
-def list_provisionals():
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("""
+async def list_provisionals(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(text("""
         SELECT provisional_id, target_passport_ref, action_type, expiry,
                originating_srv_ids, degraded_mode, actor_type, created_at, revoked
         FROM provisionals
         ORDER BY created_at DESC
-    """)
-    rows = cursor.fetchall()
-    conn.close()
+    """))
+    rows = result.fetchall()
 
     results = []
     for row in rows:
@@ -285,17 +278,14 @@ def list_provisionals():
     }
 
 @app.get("/debug/srvs")
-def list_srvs():
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("""
+async def list_srvs(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(text("""
         SELECT srv_id, passport_ref, harm_class, severity, confidence,
                timestamp, emitter, actor_type, degraded_emission, created_at
         FROM srvs
         ORDER BY created_at DESC
-    """)
-    rows = cursor.fetchall()
-    conn.close()
+    """))
+    rows = result.fetchall()
 
     results = []
     for row in rows:
@@ -316,6 +306,31 @@ def list_srvs():
         "count": len(results),
         "items": results
     }
+
+if DEBUG_MODE:
+    @app.get("/debug/continuity")
+    async def list_continuity_references(db: AsyncSession = Depends(get_db)):
+        result = await db.execute(text("""
+            SELECT continuity_ref, expires_at, created_at, actor_type, degraded
+            FROM continuity_references
+            ORDER BY created_at DESC
+        """))
+        rows = result.fetchall()
+
+        results = []
+        for row in rows:
+            results.append({
+                "continuity_ref": row[0],
+                "expires_at": row[1],
+                "created_at": row[2],
+                "actor_type": row[3],
+                "degraded": bool(row[4])
+            })
+
+        return {
+            "count": len(results),
+            "items": results
+        }
 
 if DEBUG_MODE:
   @app.get("/debug/continuity")
