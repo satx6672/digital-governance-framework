@@ -1,15 +1,25 @@
-```yaml
 services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: dgf_user
+      POSTGRES_PASSWORD: dgf_password
+      POSTGRES_DB: dgf_ledger
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
   dgf-middleware:
     build: .
     ports:
       - "8000:8000"
     environment:
-      DGF_DB_PATH: /data/dgf_middleware.db
+      # The app will automatically swap this to postgresql+asyncpg:// internally
+      DATABASE_URL: "postgres://dgf_user:dgf_password@db:5432/dgf_ledger"
       DGF_DEBUG: "0"
-    volumes:
-      - dgf-data:/data
+    depends_on:
+      - db
 
 volumes:
-  dgf-data:
-```
+  pgdata:
