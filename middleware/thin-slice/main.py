@@ -332,33 +332,10 @@ if DEBUG_MODE:
             "items": results
         }
 
-if DEBUG_MODE:
-  @app.get("/debug/continuity")
-  def list_continuity_references():
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT continuity_ref, expires_at, created_at, actor_type, degraded
-        FROM continuity_references
-        ORDER BY created_at DESC
-    """)
-    rows = cursor.fetchall()
-    conn.close()
-
-    results = []
-    for row in rows:
-        results.append({
-            "continuity_ref": row[0],
-            "expires_at": row[1],
-            "created_at": row[2],
-            "actor_type": row[3],
-            "degraded": bool(row[4])
-        })
-
-    return {
-        "count": len(results),
-        "items": results
-    }
+@app.get("/debug/init")
+async def manual_init():
+    await init_db()
+    return {"message": "Database tables initialized"}
 
 @app.get("/")
 def read_root():
