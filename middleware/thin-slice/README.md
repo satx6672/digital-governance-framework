@@ -130,13 +130,13 @@ This is a proof of concept, not production software.
 
 ## What works
 
-- `POST /continuity` — issue a Continuity Reference (stores in SQLite)
+- `POST /continuity` — issue a Continuity Reference (stores in PostgreSQL)
 - `POST /srv` — emit a Systemic Risk Vector against a valid, unexpired Continuity Reference
 - `POST /provisional` — issue a Provisional action
 - `POST /provisional/{provisional_id}/revoke` — revoke a Provisional
 - `POST /acq` — issue an acq action
 - Expiry checks on Continuity References (410 when expired)
-- Local SQLite storage
+- PostgreSQL cloud and local storage (via asyncpg)
 
 ## What does not work yet (intentional limits)
 
@@ -147,6 +147,7 @@ This is a proof of concept, not production software.
 
 - Python 3.10+
 - Windows / macOS / Linux
+- PostgreSQL (local or cloud instance)
 
 ## Setup (local)
 
@@ -165,7 +166,7 @@ Open: http://127.0.0.1:8000/docs
 
 | Variable | Default | Meaning |
 |----------|---------|---------|
-| `DGF_DB_PATH` | `dgf_middleware.db` | SQLite database file path |
+| `DGF_DB_PATH` | `(unset)` | PostgreSQL connection string (Render or local Docker URL) |
 | `DGF_DEBUG` | `0` | Set to `1` to enable `/debug/*` routes |
 | `DGF_API_KEY` | `(unset)` | If set, require Authorization: Bearer <key> on coordination endpoints |
 
