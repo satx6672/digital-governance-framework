@@ -15,7 +15,6 @@ The middleware is designed to enable cross-platform risk coordination while rema
 The machine-readable API contract is defined here:
 
 → [`openapi.yaml`](../middleware/openapi.yaml)  
-*(update the path if your file is located elsewhere)*
 
 ## AI-Agent Support and W3C DID/VC Compatibility
 
