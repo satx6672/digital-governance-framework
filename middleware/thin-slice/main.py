@@ -77,6 +77,12 @@ async def lifespan(app: FastAPI):
     yield
     await engine.dispose()
 
+app = FastAPI(
+    title="DGF Middleware API",
+    version="1.0.0-mvp",
+    lifespan=lifespan
+)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], 
