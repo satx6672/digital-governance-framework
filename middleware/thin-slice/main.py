@@ -26,6 +26,9 @@ if DATABASE_URL.startswith("postgres://"):
 engine = create_async_engine(DATABASE_URL, pool_size=20, max_overflow=40, echo=False)
 async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
+async def get_db():
+    async with async_session() as session:
+        yield session
 async def init_db():
     async with engine.begin() as conn:
         await conn.execute(text("""
