@@ -19,19 +19,63 @@ from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
 
-# Update your FastAPI app initialization to include the lifespan
-from contextlib import asynccontextmanager
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./dgf_ledger.db")
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
 
-# 1. Define the startup logic (creating tables) BEFORE the app is created
+engine = create_async_engine(DATABASE_URL, pool_size=20, max_overflow=40, echo=False)
+async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+async def init_db():
+    async with engine.begin() as conn:
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS continuity_references (
+                continuity_ref TEXT PRIMARY KEY,
+                expires_at TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                actor_type TEXT,
+                degraded INTEGER DEFAULT 0
+            );
+            CREATE TABLE IF NOT EXISTS srvs (
+                srv_id TEXT PRIMARY KEY,
+                passport_ref TEXT NOT NULL,
+                harm_class TEXT NOT NULL,
+                severity TEXT NOT NULL,
+                confidence REAL NOT NULL,
+                timestamp TEXT NOT NULL,
+                emitter TEXT NOT NULL,
+                actor_type TEXT,
+                degraded_emission INTEGER DEFAULT 0,
+                created_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS provisionals (
+                provisional_id TEXT PRIMARY KEY,
+                target_passport_ref TEXT NOT NULL,
+                action_type TEXT NOT NULL,
+                expiry TEXT NOT NULL,
+                originating_srv_ids TEXT NOT NULL,
+                degraded_mode INTEGER DEFAULT 0,
+                actor_type TEXT,
+                created_at TEXT NOT NULL,
+                revoked INTEGER DEFAULT 0
+            );
+            CREATE TABLE IF NOT EXISTS acqs (
+                acq_id TEXT PRIMARY KEY,
+                srv_id TEXT,
+                target_passport_ref TEXT NOT NULL,
+                requesting_platform TEXT,
+                query_type TEXT,
+                status TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                nonce TEXT
+            );
+        """))
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        # This builds your PostgreSQL tables if they don't exist yet
-        await conn.run_sync(Base.metadata.create_all)
+    await init_db()
     yield
-
-# 2. Now Python knows what 'lifespan' is when it creates the app
-app = FastAPI(lifespan=lifespan)
+    await engine.dispose()
 
 app.add_middleware(
     CORSMiddleware,
@@ -89,92 +133,6 @@ def require_api_key(
         )
 
 DEBUG_MODE = os.getenv("DGF_DEBUG", "0") == "1"
-
-# 1. Grab the Render URL and format it for the asyncpg driver
-raw_db_url = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./dgf_ledger.db")
-if raw_db_url.startswith("postgres://"):
-    DATABASE_URL = raw_db_url.replace("postgres://", "postgresql+asyncpg://", 1)
-else:
-    DATABASE_URL = raw_db_url
-
-# 2. Create the Async Engine with the expanded connection pool
-engine = create_async_engine(
-    DATABASE_URL, 
-    pool_size=20, 
-    max_overflow=40, 
-    pool_timeout=30,
-    echo=False
-)
-
-# 3. Create the session factory for your endpoints
-async_session = sessionmaker(
-    engine, class_=AsyncSession, expire_on_commit=False
-)
-
-# Dependency to get the async database session
-async def get_db():
-    async with async_session() as session:
-        yield session
-
-# 4. Asynchronous Database Initialization for all tables
-async def init_db():
-    async with engine.begin() as conn:
-        await conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS continuity_references (
-                continuity_ref TEXT PRIMARY KEY,
-                expires_at TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                actor_type TEXT,
-                degraded INTEGER DEFAULT 0
-            )
-        """))
-        
-        await conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS srvs (
-                srv_id TEXT PRIMARY KEY,
-                passport_ref TEXT NOT NULL,
-                harm_class TEXT NOT NULL,
-                severity TEXT NOT NULL,
-                confidence REAL NOT NULL,
-                timestamp TEXT NOT NULL,
-                emitter TEXT NOT NULL,
-                actor_type TEXT,
-                degraded_emission INTEGER DEFAULT 0,
-                created_at TEXT NOT NULL
-            )
-        """))
-        
-        await conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS provisionals (
-                provisional_id TEXT PRIMARY KEY,
-                target_passport_ref TEXT NOT NULL,
-                action_type TEXT NOT NULL,
-                expiry TEXT NOT NULL,
-                originating_srv_ids TEXT NOT NULL,
-                degraded_mode INTEGER DEFAULT 0,
-                actor_type TEXT,
-                created_at TEXT NOT NULL,
-                revoked INTEGER DEFAULT 0
-            )
-        """))
-        
-        await conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS acqs (
-                acq_id TEXT PRIMARY KEY,
-                srv_id TEXT,
-                target_passport_ref TEXT NOT NULL,
-                requesting_platform TEXT,
-                query_type TEXT,
-                status TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                nonce TEXT
-            )
-        """))
-
-# 5. Trigger database creation on server startup
-@app.on_event("startup")
-async def on_startup():
-    await init_db()
 
 class ACQRequest(BaseModel):
     srv_id: Optional[str] = None
