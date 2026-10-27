@@ -33,6 +33,10 @@ async def lifespan(app: FastAPI):
 # 2. Now Python knows what 'lifespan' is when it creates the app
 app = FastAPI(lifespan=lifespan)
 
+origins = [
+    "chrome-extension://[idjfchmjfknlbioaggfkpmddflomigga]",
+]
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], 
