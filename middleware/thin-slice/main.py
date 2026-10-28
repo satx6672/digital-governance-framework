@@ -96,8 +96,8 @@ DEBUG_MODE = os.getenv("DGF_DEBUG", "0") == "1"
 
 # 1. Grab the Render URL and format it for the asyncpg driver
 raw_db_url = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./dgf_ledger.db")
-if raw_db_url.startswith("postgres://"):
-    DATABASE_URL = raw_db_url.replace("postgres://", "postgresql+asyncpg://", 1)
+if raw_db_url.startswith("postgresql://"):
+    DATABASE_URL = raw_db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
 else:
     DATABASE_URL = raw_db_url
 
