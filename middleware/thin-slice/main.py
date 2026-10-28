@@ -94,12 +94,11 @@ def require_api_key(
 
 DEBUG_MODE = os.getenv("DGF_DEBUG", "0") == "1"
 
-# 1. Grab the Render URL and format it for the asyncpg driver
-raw_db_url = os.getenv("postgresql://dgflabs:8WkzjQBEk8aSCvUnCCBLvg6jP6HWLT7D@dpg-dbd9v7rrjlhs73chka20-a.oregon-postgres.render.com/dgfmiddleware")
+raw_db_url = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./dgf_ledger.db")
 if raw_db_url.startswith("postgresql://"):
-    DATABASE_URL = postgresql://dgflabs:8WkzjQBEk8aSCvUnCCBLvg6jP6HWLT7D@dpg-dbd9v7rrjlhs73chka20-a.oregon-postgres.render.com/dgfmiddleware.replace("postgresql://", "postgresql+asyncpg://", 1)
+    DATABASE_URL = raw_db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
 else:
-    DATABASE_URL = postgresql://dgflabs:8WkzjQBEk8aSCvUnCCBLvg6jP6HWLT7D@dpg-dbd9v7rrjlhs73chka20-a.oregon-postgres.render.com/dgfmiddleware
+    DATABASE_URL = raw_db_url
 
 # 2. Create the Async Engine with the expanded connection pool
 engine = create_async_engine(
