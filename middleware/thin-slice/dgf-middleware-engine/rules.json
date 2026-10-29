@@ -1,0 +1,29 @@
+[
+  {
+    "id": 1,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "google-analytics.com/analytics.js",
+      "resourceTypes": ["script", "xmlhttprequest", "ping"]
+    }
+  },
+  {
+    "id": 2,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "facebook.com/tr/",
+      "resourceTypes": ["image", "script", "xmlhttprequest", "ping"]
+    }
+  },
+  {
+    "id": 3,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "doubleclick.net",
+      "resourceTypes": ["sub_frame", "script", "image", "xmlhttprequest"]
+    }
+  }
+]
