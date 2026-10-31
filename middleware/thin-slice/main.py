@@ -174,6 +174,36 @@ async def init_db():
             )
         """))
 
+# Add these index creations right after the acqs table creation
+        await conn.execute(text("""
+            CREATE INDEX IF NOT EXISTS idx_srvs_passport_ref ON srvs(passport_ref)
+        """))
+        
+        await conn.execute(text("""
+            CREATE INDEX IF NOT EXISTS idx_provisionals_target_passport ON provisionals(target_passport_ref)
+        """))
+
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS acqs (
+                acq_id TEXT PRIMARY KEY,
+                srv_id TEXT,
+                target_passport_ref TEXT NOT NULL,
+                requesting_platform TEXT,
+                query_type TEXT,
+                status TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                nonce TEXT
+            )
+        """))
+
+        await conn.execute(text("""
+            CREATE INDEX IF NOT EXISTS idx_srvs_passport_ref ON srvs(passport_ref)
+        """))
+        
+        await conn.execute(text("""
+            CREATE INDEX IF NOT EXISTS idx_provisionals_target_passport ON provisionals(target_passport_ref)
+        """))
+
 # 5. Trigger database creation on server startup
 @app.on_event("startup")
 async def on_startup():
