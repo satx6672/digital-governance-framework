@@ -745,20 +745,20 @@ async def issue_acq(
 
 import stripe
 import os
-import psycopg2 # Standard Postgres adapter
+import psycopg2
 from fastapi import Request, HTTPException, APIRouter
 
-# Initialize router (or attach directly to your existing 'app' instance)
+# Note: If your main.py uses 'app = FastAPI()', change '@router' to '@app' below
 router = APIRouter()
 
 # Pull keys securely from Render Environment Variables
 stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
 WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET")
-DATABASE_URL = os.environ.get("DATABASE_URL") # Your Render Postgres connection string
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
+# 1. The Webhook Listener: Catches successful payments from Stripe and updates Postgres
 @router.post("/webhooks/stripe")
 async def stripe_webhook(request: Request):
-    # Stripe requires the raw body and signature header for verification
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature")
 
@@ -771,37 +771,38 @@ async def stripe_webhook(request: Request):
     except stripe.error.SignatureVerificationError:
         raise HTTPException(status_code=400, detail="Invalid signature")
 
-    # Only process successful checkouts
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
-        
-        # This is the UUID passed from your extension via the Payment Link
         paid_uuid = session.get("client_reference_id") 
 
         if paid_uuid:
             try:
-                # Connect to PostgreSQL
                 conn = psycopg2.connect(DATABASE_URL)
                 cur = conn.cursor()
                 
-                # Flip the license status to 'paid'
+                # UPSERT: Updates status to 'paid', or inserts it if the row doesn't exist yet
                 cur.execute(
-                    "UPDATE middleware_licenses SET status = 'paid' WHERE installation_uuid = %s",
+                    """
+                    INSERT INTO middleware_licenses (installation_uuid, status) 
+                    VALUES (%s, 'paid') 
+                    ON CONFLICT (installation_uuid) 
+                    DO UPDATE SET status = 'paid'
+                    """,
                     (paid_uuid,)
                 )
                 
                 conn.commit()
                 cur.close()
                 conn.close()
-                print(f"License successfully unlocked for UUID: {paid_uuid}")
+                print(f"[BILLING] License successfully unlocked for UUID: {paid_uuid}")
                 
             except Exception as db_error:
-                print(f"Database error: {db_error}")
+                print(f"[BILLING] Database error: {db_error}")
                 raise HTTPException(status_code=500, detail="Database update failed")
 
-    # Stripe requires a 2xx response to know the webhook was received
     return {"status": "success"}
 
+# 2. The License Checker: The extension pings this to verify Pro status
 @router.get("/license/{uuid}")
 async def check_license(uuid: str):
     try:
@@ -815,12 +816,28 @@ async def check_license(uuid: str):
         conn.close()
 
         if result:
-            return {"status": result[0]}  # Returns 'paid' or 'free'
+            return {"status": result[0]} 
         else:
-            # If UUID isn't in the database yet, it defaults to free
+            # Silently log the new free install into the database
+            try:
+                conn = psycopg2.connect(DATABASE_URL)
+                cur = conn.cursor()
+                cur.execute(
+                    """
+                    INSERT INTO middleware_licenses (installation_uuid, status) 
+                    VALUES (%s, 'free') 
+                    ON CONFLICT (installation_uuid) DO NOTHING
+                    """, 
+                    (uuid,)
+                )
+                conn.commit()
+                cur.close()
+                conn.close()
+            except Exception:
+                pass # Fail silently so the extension doesn't break if insert fails
+            
             return {"status": "free"} 
             
     except Exception as db_error:
-        print(f"Database error during license check: {db_error}")
-        # Default to free if the database connection temporarily drops
-        return {"status": "free"}
+        print(f"[BILLING] Database error during license check: {db_error}")
+        return {"status": "free"} # Defaults to free if connection drops
