@@ -23,6 +23,21 @@ from sqlalchemy.orm import declarative_base
 # Note: If your main.py uses 'app = FastAPI()', change '@router' to '@app' below
 router = APIRouter()
 
+# 1. Define the startup logic (creating tables) BEFORE the app is created
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    async with engine.begin() as conn:
+        # This builds your PostgreSQL tables if they don't exist yet
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+
+# 2. Now Python knows what 'lifespan' is when it creates the app
+app = FastAPI(lifespan=lifespan)
+
+origins = [
+    "chrome-extension://[ihheogkgoigfkjjdldpmpbhdjbngfhpk]",
+    "chrome-extension://[kegcmpbkmnbnmfolfhedpfbplbdgdfdp]"
+]
 # Pull keys securely from Render Environment Variables
 stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
 WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET")
@@ -118,22 +133,6 @@ Base = declarative_base()
 
 # Update your FastAPI app initialization to include the lifespan
 from contextlib import asynccontextmanager
-
-# 1. Define the startup logic (creating tables) BEFORE the app is created
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        # This builds your PostgreSQL tables if they don't exist yet
-        await conn.run_sync(Base.metadata.create_all)
-    yield
-
-# 2. Now Python knows what 'lifespan' is when it creates the app
-app = FastAPI(lifespan=lifespan)
-
-origins = [
-    "chrome-extension://[ihheogkgoigfkjjdldpmpbhdjbngfhpk]",
-    "chrome-extension://[kegcmpbkmnbnmfolfhedpfbplbdgdfdp]"
-]
 
 app.add_middleware(
     CORSMiddleware,
