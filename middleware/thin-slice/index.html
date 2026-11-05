@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>DGF Parent Command</title>
+  <style>
+    :root {
+      --bg: #0d121c;
+      --card-bg: #1a2235;
+      --border: #1F394A;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #3b82f6;
+      --danger: #f43f5e;
+      --success: #10b981;
+    }
+    
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 400px; /* Mobile app dimensions */
+      padding: 24px;
+      box-sizing: border-box;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .header h1 {
+      font-size: 20px;
+      color: var(--text);
+      margin: 0 0 8px 0;
+    }
+
+    .header p {
+      font-size: 13px;
+      color: var(--muted);
+      margin: 0;
+    }
+
+    .card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background-color: var(--bg);
+      color: var(--success);
+      font-family: ui-monospace, monospace;
+      font-size: 14px;
+      box-sizing: border-box;
+      margin-bottom: 16px;
+    }
+
+    input[type="text"]:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      margin-bottom: 16px;
+      border: 1px solid transparent;
+    }
+
+    .status-standard {
+      background-color: rgba(16, 185, 129, 0.1);
+      color: var(--success);
+      border-color: rgba(16, 185, 129, 0.2);
+    }
+
+    .status-degraded {
+      background-color: rgba(244, 63, 94, 0.1);
+      color: var(--danger);
+      border-color: rgba(244, 63, 94, 0.2);
+    }
+
+    .btn-toggle {
+      width: 100%;
+      padding: 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      color: white;
+    }
+
+    .btn-standard {
+      background-color: var(--accent);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    .btn-standard:hover { background-color: #2563eb; }
+
+    .btn-degraded {
+      background-color: var(--danger);
+      box-shadow: 0 4px 12px rgba(244, 63, 94, 0.3);
+    }
+
+    .btn-degraded:hover { background-color: #e11d48; }
+
+    .feedback {
+      text-align: center;
+      font-size: 12px;
+      margin-top: 12px;
+      min-height: 18px;
+      transition: color 0.3s ease;
+    }
+
+    /* PWA Install Prompt hiding */
+    @media all and (display-mode: standalone) {
+      .container { padding-top: 40px; } /* Notch clearance */
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="header">
+      <h1>🛡️ Parent Dashboard</h1>
+      <p>DGF Family Remote Control</p>
+    </div>
+
+    <div class="card">
+      <label for="child-id">Child Device Token</label>
+      <input type="text" id="child-id" placeholder="cont_xxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false">
+      <div style="font-size: 11px; color: var(--muted); margin-top: -8px;">Find this token in the child's extension.</div>
+    </div>
+
+    <div class="card" style="text-align: center;">
+      <div id="status-display" class="status-badge status-standard">STANDARD ACCESS</div>
+      
+      <button id="btn-toggle" class="btn-toggle btn-standard">
+        Engage Homework Mode
+      </button>
+      
+      <div id="api-feedback" class="feedback"></div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = "https://digital-governance-framework.onrender.com";
+    const DGF_API_KEY = "00e625db6549070e7198c9e24e42ef70";
+
+    const inputChildId = document.getElementById('child-id');
+    const btnToggle = document.getElementById('btn-toggle');
+    const statusDisplay = document.getElementById('status-display');
+    const feedback = document.getElementById('api-feedback');
+
+    // 1. Initialize State
+    let isCurrentlyDegraded = false;
+
+    // Load saved token from local storage so parents don't have to re-type it
+    const savedToken = localStorage.getItem('dgf_child_token');
+    if (savedToken) {
+      inputChildId.value = savedToken;
+      checkCurrentState(savedToken);
+    }
+
+    // 2. Poll API to sync button state when app opens
+    async function checkCurrentState(token) {
+      try {
+        const response = await fetch(`${API_BASE}/check-state?continuity_ref=${token}`, {
+          headers: { "Authorization": `Bearer ${DGF_API_KEY}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          isCurrentlyDegraded = data.is_degraded;
+          updateUI();
+        }
+      } catch (err) {
+        console.error("State sync failed", err);
+      }
+    }
+
+    // 3. Handle the Toggle Click
+    btnToggle.addEventListener('click', async () => {
+      const token = inputChildId.value.trim();
+      if (!token || !token.startsWith('cont_')) {
+        showFeedback("Please enter a valid Child Device Token", "var(--danger)");
+        return;
+      }
+
+      // Save valid token for next session
+      localStorage.setItem('dgf_child_token', token);
+      
+      // Determine the new state we want to push
+      const targetState = !isCurrentlyDegraded;
+      
+      btnToggle.innerText = "Transmitting...";
+      btnToggle.disabled = true;
+      feedback.innerText = "";
+
+      try {
+        const response = await fetch(`${API_BASE}/toggle-state`, {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${DGF_API_KEY}` 
+          },
+          body: JSON.stringify({
+            continuity_ref: token,
+            is_degraded: targetState
+          })
+        });
+
+        if (response.ok) {
+          isCurrentlyDegraded = targetState;
+          updateUI();
+          showFeedback("Command accepted by edge proxy.", "var(--success)");
+        } else {
+          const errorData = await response.json();
+          showFeedback(errorData.detail || "Connection failed.", "var(--danger)");
+        }
+      } catch (err) {
+        showFeedback("Network error. Is the server awake?", "var(--danger)");
+      } finally {
+        btnToggle.disabled = false;
+      }
+    });
+
+    // 4. Visual State Machine
+    function updateUI() {
+      if (isCurrentlyDegraded) {
+        statusDisplay.className = "status-badge status-degraded";
+        statusDisplay.innerText = "HOMEWORK MODE ACTIVE";
+        btnToggle.className = "btn-toggle btn-degraded";
+        btnToggle.innerText = "Restore Normal Access";
+      } else {
+        statusDisplay.className = "status-badge status-standard";
+        statusDisplay.innerText = "STANDARD ACCESS";
+        btnToggle.className = "btn-toggle btn-standard";
+        btnToggle.innerText = "Engage Homework Mode";
+      }
+    }
+
+    function showFeedback(msg, color) {
+      feedback.style.color = color;
+      feedback.innerText = msg;
+      setTimeout(() => feedback.innerText = "", 4000);
+    }
+
+    // Live update when parent pastes a new token
+    inputChildId.addEventListener('input', (e) => {
+      if (e.target.value.startsWith('cont_')) {
+        checkCurrentState(e.target.value);
+      }
+    });
+  </script>
+</body>
+</html>
