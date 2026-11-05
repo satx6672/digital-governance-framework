@@ -383,8 +383,15 @@ def read_root():
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def parent_dashboard():
-    with open("index.html", "r") as file:
-        return file.read()
+    # Dynamically get the directory where main.py is currently running
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    file_path = os.path.join(current_dir, "index.html")
+    
+    try:
+        with open(file_path, "r", encoding="utf-8") as file:
+            return file.read()
+    except FileNotFoundError:
+        return f"<h1>Error: Cannot find index.html</h1><p>Looked in: {file_path}</p>"
 
 @app.get("/privacy", response_class=HTMLResponse)
 async def privacy_policy():
