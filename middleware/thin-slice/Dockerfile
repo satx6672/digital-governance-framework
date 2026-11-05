@@ -7,6 +7,8 @@ RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
 COPY main.py .
 
+COPY index.html .
+
 ENV DGF_DEBUG=0
 
 EXPOSE 8000
