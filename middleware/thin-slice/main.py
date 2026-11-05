@@ -209,6 +209,10 @@ async def init_db():
 async def on_startup():
     await init_db()
 
+class ToggleStateRequest(BaseModel):
+    continuity_ref: str
+    is_degraded: bool
+
 class ACQRequest(BaseModel):
     srv_id: Optional[str] = None
     target_passport_ref: str
@@ -594,6 +598,66 @@ async def revoke_provisional(
         "status": "revoked",
         "provisional_id": provisional_id,
         "reason": request.reason
+    }
+
+@app.get("/check-state")
+async def check_emission_state(
+    continuity_ref: str,
+    _: None = Depends(require_api_key),
+    db: AsyncSession = Depends(get_db)
+):
+    # The child's extension polls this endpoint to get the current degraded state
+    result = await db.execute(
+        text("""
+        SELECT degraded FROM continuity_references
+        WHERE continuity_ref = :ref
+        """),
+        {"ref": continuity_ref}
+    )
+    row = result.fetchone()
+
+    if row is None:
+        raise HTTPException(status_code=404, detail="Continuity Reference not found")
+
+    # Return boolean value for the extension to parse
+    return {
+        "continuity_ref": continuity_ref,
+        "is_degraded": bool(row[0])
+    }
+
+@app.post("/toggle-state")
+async def toggle_emission_state(
+    request: ToggleStateRequest,
+    _: None = Depends(require_api_key),
+    db: AsyncSession = Depends(get_db)
+):
+    # 1. Verify the session token exists
+    result = await db.execute(
+        text("SELECT continuity_ref FROM continuity_references WHERE continuity_ref = :ref"),
+        {"ref": request.continuity_ref}
+    )
+    if result.fetchone() is None:
+        raise HTTPException(status_code=404, detail="Continuity Reference not found")
+
+    # 2. Update the degraded state in PostgreSQL
+    degraded_int = 1 if request.is_degraded else 0
+    await db.execute(
+        text("""
+        UPDATE continuity_references
+        SET degraded = :deg
+        WHERE continuity_ref = :ref
+        """),
+        {
+            "deg": degraded_int,
+            "ref": request.continuity_ref
+        }
+    )
+    await db.commit()
+
+    return {
+        "status": "success",
+        "continuity_ref": request.continuity_ref,
+        "new_state": "degraded" if request.is_degraded else "standard"
     }
 
 @app.post("/acq", response_model=ACQResponse)
