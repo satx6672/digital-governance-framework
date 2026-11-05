@@ -801,3 +801,26 @@ async def stripe_webhook(request: Request):
 
     # Stripe requires a 2xx response to know the webhook was received
     return {"status": "success"}
+
+@router.get("/license/{uuid}")
+async def check_license(uuid: str):
+    try:
+        conn = psycopg2.connect(DATABASE_URL)
+        cur = conn.cursor()
+        
+        cur.execute("SELECT status FROM middleware_licenses WHERE installation_uuid = %s", (uuid,))
+        result = cur.fetchone()
+        
+        cur.close()
+        conn.close()
+
+        if result:
+            return {"status": result[0]}  # Returns 'paid' or 'free'
+        else:
+            # If UUID isn't in the database yet, it defaults to free
+            return {"status": "free"} 
+            
+    except Exception as db_error:
+        print(f"Database error during license check: {db_error}")
+        # Default to free if the database connection temporarily drops
+        return {"status": "free"}
