@@ -742,3 +742,62 @@ async def issue_acq(
         "timestamp": created_at,
         "error_detail": None,
     }
+
+import stripe
+import os
+import psycopg2 # Standard Postgres adapter
+from fastapi import Request, HTTPException, APIRouter
+
+# Initialize router (or attach directly to your existing 'app' instance)
+router = APIRouter()
+
+# Pull keys securely from Render Environment Variables
+stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
+WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET")
+DATABASE_URL = os.environ.get("DATABASE_URL") # Your Render Postgres connection string
+
+@router.post("/webhooks/stripe")
+async def stripe_webhook(request: Request):
+    # Stripe requires the raw body and signature header for verification
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature")
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, WEBHOOK_SECRET
+        )
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid payload")
+    except stripe.error.SignatureVerificationError:
+        raise HTTPException(status_code=400, detail="Invalid signature")
+
+    # Only process successful checkouts
+    if event["type"] == "checkout.session.completed":
+        session = event["data"]["object"]
+        
+        # This is the UUID passed from your extension via the Payment Link
+        paid_uuid = session.get("client_reference_id") 
+
+        if paid_uuid:
+            try:
+                # Connect to PostgreSQL
+                conn = psycopg2.connect(DATABASE_URL)
+                cur = conn.cursor()
+                
+                # Flip the license status to 'paid'
+                cur.execute(
+                    "UPDATE middleware_licenses SET status = 'paid' WHERE installation_uuid = %s",
+                    (paid_uuid,)
+                )
+                
+                conn.commit()
+                cur.close()
+                conn.close()
+                print(f"License successfully unlocked for UUID: {paid_uuid}")
+                
+            except Exception as db_error:
+                print(f"Database error: {db_error}")
+                raise HTTPException(status_code=500, detail="Database update failed")
+
+    # Stripe requires a 2xx response to know the webhook was received
+    return {"status": "success"}
