@@ -381,6 +381,11 @@ def read_root():
         "message": "DGF Middleware thin slice is running"
     }
 
+@app.get("/dashboard", response_class=HTMLResponse)
+async def parent_dashboard():
+    with open("index.html", "r") as file:
+        return file.read()
+
 @app.get("/privacy", response_class=HTMLResponse)
 async def privacy_policy():
     return """
