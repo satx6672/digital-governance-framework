@@ -284,6 +284,19 @@
         checkCurrentState(e.target.value);
       }
     });
+
+  const extensionId = "idjfchmjfknlbioaggfkpmddflomigga";
+  const urlsToBlock = ["tiktok.com", "snapchat.com"]; // Grabbed from the input field
+
+  chrome.runtime.sendMessage(
+  extensionId, 
+  { type: "ADD_CUSTOM_BLOCKS", payload: urlsToBlock }, 
+  (response) => {
+    if (response && response.success) {
+      console.log("URLs successfully beamed to the local extension.");
+      }
+    }
+  );    
   </script>
 </body>
 </html>
