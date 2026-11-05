@@ -176,6 +176,18 @@
     </div>
   </div>
 
+  <div id="custom-block-container" class="dormant" style="margin-top: 20px; padding: 15px; background: #1e293b; border-radius: 8px; border: 1px solid #334155; text-align: center;">
+    <p style="color: #94a3b8; font-size: 12px; margin-bottom: 10px;">Custom Blocklist</p>
+    <input 
+      type="text" 
+      id="custom-url-input" 
+      placeholder="Add URLs to block (e.g., tiktok.com, snapchat.com)"
+      style="width: 80%; padding: 8px; border-radius: 4px; border: 1px solid #475569; background: #0f172a; color: #e2e8f0; margin-bottom: 10px;"
+    />
+    <br>
+    <button id="btn-add-url" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer;" disabled>Add URL</button>
+  </div>
+
   <script>
     const API_BASE = "https://digital-governance-framework.onrender.com";
     const DGF_API_KEY = "00e625db6549070e7198c9e24e42ef70";
