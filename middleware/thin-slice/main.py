@@ -132,6 +132,7 @@ app = FastAPI(lifespan=lifespan)
 
 origins = [
     "chrome-extension://[ihheogkgoigfkjjdldpmpbhdjbngfhpk]",
+    "chrome-extension://[kegcmpbkmnbnmfolfhedpfbplbdgdfdp]"
 ]
 
 app.add_middleware(
