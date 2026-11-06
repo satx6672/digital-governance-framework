@@ -35,6 +35,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 origins = [
+    "chrome-extension://[lmndagmoinleoinkhildkjfgbaddlbdm]",
     "chrome-extension://[ihheogkgoigfkjjdldpmpbhdjbngfhpk]",
     "chrome-extension://[kegcmpbkmnbnmfolfhedpfbplbdgdfdp]"
 ]
