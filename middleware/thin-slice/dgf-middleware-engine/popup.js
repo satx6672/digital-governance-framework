@@ -1,5 +1,3 @@
-const extpay = ExtPay('dgf-middleware-engine');
-
 document.addEventListener("DOMContentLoaded", async () => {
   const btnEstablish = document.getElementById("btn-establish");
   const btnUpgrade = document.getElementById("btn-upgrade");
@@ -13,10 +11,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   let toastTimeout = null;
   let thresholdAlertTriggered = false;
 
-  // 1. Verify Monetization Status
+  // 1. Verify Monetization Status (Reads from Chrome local storage set by background.js)
   try {
-    const user = await extpay.getUser();
-    if (user.paid) {
+    const result = await chrome.storage.local.get(['isPaid']);
+    if (result.isPaid) {
       isProUser = true;
       if (modeBadge) {
         modeBadge.innerText = "PRO MODE";
@@ -26,7 +24,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     }
   } catch (err) {
-    console.log("ExtPay offline", err);
+    console.log("License status check failed", err);
   }
 
   // 2. Pulse Animation Keyframes & Floating Toast Overlay
@@ -110,11 +108,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     }, 4000);
   };
 
-  // 3. Handle Pro Upgrade click
+  // 3. Handle Pro Upgrade click (Routed through background script to your Stripe link)
   if (btnUpgrade) {
-    btnUpgrade.addEventListener("click", () => {
-      extpay.openPaymentPage();
-    });
+    if (isProUser) {
+      // Hide the button completely if they already bought the license
+      btnUpgrade.style.display = "none";
+    } else {
+      btnUpgrade.addEventListener("click", () => {
+        chrome.runtime.sendMessage({ type: "INITIATE_CHECKOUT" });
+      });
+    }
   }
 
   // 4. Handle Terminal: View Edge Audit Log Button Click
@@ -147,7 +150,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             source: "dgf-edge-proxy", 
             timestamp: new Date().toISOString() 
           },
-          note: "edge-proxy-init"
+          note: "edge-proxy-init",
+          is_pro: isProUser
         }
       }, (response) => {
         if (response && response.ok && response.data && response.data.continuity_ref) {
@@ -226,28 +230,33 @@ document.addEventListener("DOMContentLoaded", async () => {
 
               if (elIsolated) {
                 const newIsolatedText = String(isolatedCount).padStart(4, '0');
-                if (elIsolated.innerText !== newIsolatedText) {
-                  elIsolated.innerText = newIsolatedText;
-                  elIsolated.classList.remove('data-update-flash');
-                  void elIsolated.offsetWidth; 
-                  elIsolated.classList.add('data-update-flash');
-                }
+              if (elIsolated.innerText !== newIsolatedText) {
+                elIsolated.innerText = newIsolatedText;
+                elIsolated.classList.remove('data-update-flash');
+                void elIsolated.offsetWidth; 
+                elIsolated.classList.add('data-update-flash');
               }
-            });
-          };
+            }
+          });
+        };
 
-          updateTelemetryUI();
-          telemetryInterval = setInterval(updateTelemetryUI, 2000);
+        // Start the polling loop after a successful handshake
+        updateTelemetryUI();
+        telemetryInterval = setInterval(updateTelemetryUI, 2000);
 
-        } else {
-          btnEstablish.innerText = "Establish Identity Continuity";
-          btnEstablish.disabled = false;
-          if (continuityStatus) {
-            continuityStatus.innerText = "Connection Failed";
-            continuityStatus.style.color = "#ef4444"; 
-          }
-        }
-      });
+      } else {
+        // Reset button if the backend handshake fails
+        btnEstablish.innerText = "Connection Failed";
+        btnEstablish.disabled = false;
+      }
     });
-  }
+  });
+}
 });
+
+
+
+
+
+
+

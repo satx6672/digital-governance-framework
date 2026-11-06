@@ -1,20 +1,11 @@
 {
   "manifest_version": 3,
   "name": "DGF Middleware Edge Proxy",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "description": "Local-First Security and Edge Proxy for DGF",
   "background": {
     "service_worker": "background.js"
   },
-  "content_scripts": [
-    {
-      "matches": ["https://extensionpay.com/*"],
-      "js": ["ExtPay.js"],
-      "run_at": "document_start",
-      "world": "MAIN",
-      "all_frames": true
-    }
-  ],
   "action": {
     "default_popup": "popup.html"
   },

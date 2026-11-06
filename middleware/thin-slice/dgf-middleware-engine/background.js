@@ -1,17 +1,48 @@
-// 1. Native MV3 Import
-importScripts('ExtPay.js');
-
-const extpay = ExtPay('dgf-middleware-engine');
-extpay.startBackground();
-
-// 2. DGF Configuration & Master Constants
-const TARGET_API_BASE = "https://digital-governance-framework.onrender.com"; // (Your actual URL is here)
-const DGF_API_KEY = "00e625db6549070e7198c9e24e42ef70"; // (Your actual key is here)
+// 1. DGF Configuration & Master Constants
+const TARGET_API_BASE = "https://digital-governance-framework.onrender.com"; 
+const DGF_API_KEY = "00e625db6549070e7198c9e24e42ef70"; 
 const CONTINUITY_ALARM_NAME = "DGF_CONTINUITY_CYCLE";
 const BASE_INTERVAL_MINUTES = 240; 
 const JITTER_VARIANCE = 15;
 
-// Helper: True Token Rotation (Increments Isolated Counter)
+// 2. Licensing & Identity (Replaces ExtensionPay)
+async function getOrCreateUUID() {
+  let result = await chrome.storage.local.get(['installation_uuid']);
+  if (result.installation_uuid) {
+    return result.installation_uuid;
+  } else {
+    let newUUID = crypto.randomUUID(); 
+    await chrome.storage.local.set({installation_uuid: newUUID});
+    return newUUID;
+  }
+}
+
+async function verifyLicenseStatus() {
+  const uuid = await getOrCreateUUID(); 
+  try {
+    const response = await fetch(`${TARGET_API_BASE}/license/${uuid}`);
+    const data = await response.json();
+    
+    if (data.status === 'paid') {
+      console.log("[LICENSE] Valid license found. Unlocking DGF Middleware Premium.");
+      chrome.storage.local.set({ isPaid: true });
+      return true;
+    } else {
+      console.log("[LICENSE] Free tier active. Awaiting upgrade.");
+      chrome.storage.local.set({ isPaid: false });
+      return false;
+    }
+  } catch (error) {
+    console.error("[LICENSE] Server unreachable:", error);
+    return false; 
+  }
+}
+
+// Execute license verification on startup
+verifyLicenseStatus();
+
+
+// 3. Helper: True Token Rotation (Increments Isolated Counter)
 async function rotateContinuityToken(customPayload = null) {
   const mockRef = "cont_" + Math.random().toString(36).substring(2, 12);
   const payload = customPayload || {
@@ -19,7 +50,8 @@ async function rotateContinuityToken(customPayload = null) {
       source: "dgf-edge-proxy", 
       timestamp: new Date().toISOString() 
     },
-    note: "edge-proxy-auto-cycle"
+    note: "edge-proxy-auto-cycle",
+    is_pro: false // Default to false if it's an automated background rotation
   };
 
   try {
@@ -33,18 +65,20 @@ async function rotateContinuityToken(customPayload = null) {
     });
     
     const data = await response.json();
-    const token = data.continuity_ref || mockRef;
-    const newCount = await incrementIsolatedCounter(token);
-    return { ok: true, data: { continuity_ref: token }, payloadsIsolated: newCount };
-
-  } catch (err) {
-    console.warn("API unreachable, issuing local execution token.", err);
-    const newCount = await incrementIsolatedCounter(mockRef);
-    return { ok: true, data: { continuity_ref: mockRef }, payloadsIsolated: newCount };
+    
+    // Persist the token and return the success object your UI requires
+    const tokenToSave = data.continuity_ref || mockRef;
+    const isolatedCount = await incrementIsolatedCounter(tokenToSave);
+    
+    return { ok: true, data: data, payloadsIsolated: isolatedCount };
+    
+  } catch (error) {
+    console.error("Continuity connection failed:", error);
+    return { ok: false, error: error.message };
   }
 }
 
-// Helper: Persist fresh token and increment counter
+// 4. Helper: Persist fresh token and increment counter
 function incrementIsolatedCounter(token) {
   return new Promise((resolve) => {
     chrome.storage.local.get(['payloadsIsolated'], (stored) => {
@@ -71,16 +105,17 @@ function scheduleNextRotation() {
   console.log(`[STEALTH] Next token rotation scheduled in ${nextRunMinutes} minutes.`);
 }
 
-// 3. API Proxy Hub: Manual User Trigger from popup.js
+// 5. API Proxy Hub: Manual User Trigger & Checkout Listener
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "EXECUTE_PATH_CONTINUITY") {
     chrome.storage.local.get(['activeToken', 'payloadsIsolated'], async (stored) => {
       
-      // If a session is already established and active, REUSE IT
+      // I HAVE COMMENTED THIS OUT SO IT FORCES A FRESH DB UPDATE EVERY CLICK
+      /*
       if (stored.activeToken && stored.payloadsIsolated > 0) {
         chrome.alarms.get(CONTINUITY_ALARM_NAME, (alarm) => {
           if (!alarm) {
-            scheduleNextRotation(); // Replaced hardcoded periodInMinutes with stealth function
+            scheduleNextRotation(); 
           }
         });
 
@@ -91,26 +126,38 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         });
         return;
       }
+      */
 
-      // First-time establishment
+      // First-time (and forced) establishment
       const result = await rotateContinuityToken(message.payload);
-      scheduleNextRotation(); // Replaced hardcoded periodInMinutes with stealth function
+      scheduleNextRotation(); 
       sendResponse(result);
     });
 
     return true; // Keep channel open for async response
   }
+
+  // Handle Checkout Click from Popup
+  if (message.type === "INITIATE_CHECKOUT") {
+    getOrCreateUUID().then((uuid) => {
+      const baseUrl = "https://buy.stripe.com/14A9AU6qj6FDbyucP448000";
+      const checkoutUrl = `${baseUrl}?client_reference_id=${uuid}`;
+      chrome.tabs.create({ url: checkoutUrl });
+    });
+    return true;
+  }
 });
 
 
-// 4. Combined Initialization (Runs on Install/Update)
+// 6. Combined Initialization (Runs on Install/Update)
 chrome.runtime.onInstalled.addListener(() => {
-  // Set default storage states
+  // Set default storage states (added isPaid default)
   chrome.storage.local.set({ 
     trackersBlocked: 0, 
     dataSavedMB: 0,
     payloadsIsolated: 0,
-    auditLogs: []
+    auditLogs: [],
+    isPaid: false
   });
 
   // Clear any old alarms and start the stealth cycle
@@ -119,13 +166,12 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 });
 
-// 5. The Alarm Listener (Executes the Rotation)
+// 7. The Alarm Listener (Executes the Rotation)
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name === CONTINUITY_ALARM_NAME) {
     console.log("[NETWORK] Executing Continuity Token Rollover...");
     
     try {
-      // Actually execute the rotation function instead of the placeholder comment
       await rotateContinuityToken();
       console.log("[NETWORK] Token successfully rotated.");
     } catch (error) {
@@ -137,7 +183,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   }
 });
 
-// 6. Dampening Matrix Listener & SRV Emitter
+// 8. Dampening Matrix Listener & SRV Emitter
 if (chrome.declarativeNetRequest && chrome.declarativeNetRequest.onRuleMatchedDebug) {
   chrome.declarativeNetRequest.onRuleMatchedDebug.addListener((info) => {
     chrome.storage.local.get(['trackersBlocked', 'dataSavedMB', 'activeToken', 'auditLogs'], async (data) => {
@@ -179,18 +225,14 @@ if (chrome.declarativeNetRequest && chrome.declarativeNetRequest.onRuleMatchedDe
           degraded_emission: false
         };
 
-        try {
-          await fetch(`${TARGET_API_BASE}/srv`, { // Using constant for safety
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${DGF_API_KEY}`
-            },
-            body: JSON.stringify(srvPayload)
-          });
-        } catch (err) {
-          console.error("SRV Emission Failed", err);
-        }
+        fetch(`${TARGET_API_BASE}/srv`, { // Using constant for safety
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${DGF_API_KEY}`
+          },
+          body: JSON.stringify(srvPayload)
+        }).catch(err => console.error("SRV Emission Failed", err));
       }
     });
   });
