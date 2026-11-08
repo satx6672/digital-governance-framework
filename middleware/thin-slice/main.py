@@ -91,11 +91,14 @@ async def stripe_webhook(request: Request):
 
     return {"status": "success"}
 
-# 2. The License Checker: The extension pings this to verify Pro status
+# 2. The License Checker: Adjusted to use a clean connection string copy
 @router.get("/license/{uuid}")
 async def check_license(uuid: str):
     try:
-        conn = psycopg2.connect(DATABASE_URL)
+        # Create a clean copy of the database URL specifically for psycopg2 (stripping async prefixes)
+        sync_db_url = os.getenv("DATABASE_URL", "").replace("postgresql+asyncpg://", "postgresql://", 1)
+        
+        conn = psycopg2.connect(sync_db_url)
         cur = conn.cursor()
         
         cur.execute("SELECT status FROM middleware_licenses WHERE installation_uuid = %s", (uuid,))
@@ -107,9 +110,8 @@ async def check_license(uuid: str):
         if result:
             return {"status": result[0]} 
         else:
-            # Silently log the new free install into the database
             try:
-                conn = psycopg2.connect(DATABASE_URL)
+                conn = psycopg2.connect(sync_db_url)
                 cur = conn.cursor()
                 cur.execute(
                     """
@@ -123,13 +125,13 @@ async def check_license(uuid: str):
                 cur.close()
                 conn.close()
             except Exception:
-                pass # Fail silently so the extension doesn't break if insert fails
+                pass 
             
             return {"status": "free"} 
             
     except Exception as db_error:
         print(f"[BILLING] Database error during license check: {db_error}")
-        return {"status": "free"} # Defaults to free if connection drops
+        return {"status": "free"}
 
 Base = declarative_base()
 
