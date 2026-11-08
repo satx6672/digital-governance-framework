@@ -48,7 +48,7 @@ WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET")
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 # 1. The Webhook Listener: Catches successful payments from Stripe and updates Postgres
-@router.post("/webhooks/stripe")
+@app.post("/webhooks/stripe")
 async def stripe_webhook(request: Request):
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature")
@@ -94,7 +94,7 @@ async def stripe_webhook(request: Request):
     return {"status": "success"}
 
 # 2. The License Checker: Adjusted to use a clean connection string copy
-@router.get("/license/{uuid}")
+@app.get("/license/{uuid}")
 async def check_license(uuid: str):
     try:
         # Create a clean copy of the database URL specifically for psycopg2 (stripping async prefixes)
