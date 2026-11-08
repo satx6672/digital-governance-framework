@@ -33,6 +33,7 @@ async def lifespan(app: FastAPI):
 
 # 2. Now Python knows what 'lifespan' is when it creates the app
 app = FastAPI(lifespan=lifespan)
+app.include_router(router)
 
 origins = [
     "chrome-extension://[lmndagmoinleoinkhildkjfgbaddlbdm]",
