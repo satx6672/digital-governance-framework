@@ -37,9 +37,6 @@ app.include_router(router)
 
 origins = [
     "chrome-extension://[lmndagmoinleoinkhildkjfgbaddlbdm]",
-    "chrome-extension://[ihheogkgoigfkjjdldpmpbhdjbngfhpk]",
-    "chrome-extension://[kegcmpbkmnbnmfolfhedpfbplbdgdfdp]",
-    "chrome-extension://[cbfmhhcgloaeemleaaljeldfdemkccap]"
 
 ]
 # Pull keys securely from Render Environment Variables
