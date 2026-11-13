@@ -1,4 +1,4 @@
-  <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -11,11 +11,12 @@
       --text-main: #f8fafc;
       --text-muted: #94a3b8;
       --accent-blue: #3b82f6;
+      --accent-blue-hover: #2563eb;
       --danger: #f43f5e;
       --success: #10b981;
       --border-color: #334155;
     }
-    
+
     html, body {
       width: 100%;
       max-width: 400px;
@@ -25,7 +26,7 @@
       color: var(--text-main);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       box-sizing: border-box;
-      overflow-x: hidden !important; 
+      overflow-x: hidden !important;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
@@ -63,6 +64,15 @@
       margin-bottom: 20px;
     }
 
+    .field-label {
+      text-align: left;
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
     /* Monospace Token Input */
     .token-box {
       width: 100%;
@@ -71,24 +81,24 @@
       border: 1px solid var(--border-color);
       background-color: var(--bg-dark);
       color: var(--success);
-      font-family: ui-monospace, monospace;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       font-size: 14px;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
       text-align: left;
     }
-    
+
     .token-box:focus {
       outline: none;
       border-color: var(--accent-blue);
     }
-    
+
     /* Segment Selector Row */
     .segment-row {
       display: flex;
       gap: 8px;
       margin-bottom: 16px;
     }
-    
+
     .segment-select {
       flex: 1;
       padding: 12px;
@@ -98,18 +108,18 @@
       color: var(--text-main);
       font-size: 13px;
       font-weight: 600;
-      outline: none;  
+      outline: none;
     }
-    
+
     .segment-select:focus {
       border-color: var(--accent-blue);
     }
-    
+
     .btn-new-segment {
       padding: 0 14px;
       border-radius: 6px;
       border: 1px solid var(--border-color);
-      background-color: transparent;
+      background-color: var(--bg-dark);
       color: var(--text-muted);
       font-size: 13px;
       font-weight: 600;
@@ -117,12 +127,12 @@
       white-space: nowrap;
       transition: all 0.2s ease;
     }
-  
+
     .btn-new-segment:hover {
       color: var(--text-main);
       border-color: var(--text-main);
     }
-  
+
     /* Blank-Slate Segment Builder Drawer */
     .segment-builder {
       display: none;
@@ -133,7 +143,7 @@
       margin-bottom: 16px;
       text-align: left;
     }
-  
+
     .builder-label {
       font-size: 10px;
       color: var(--text-muted);
@@ -142,7 +152,7 @@
       margin-bottom: 4px;
       display: block;
     }
-  
+
     .builder-input, .builder-tier {
       width: 100%;
       padding: 10px;
@@ -154,20 +164,20 @@
       margin-bottom: 12px;
       outline: none;
     }
-  
+
     .time-window-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 8px;
       margin-bottom: 12px;
     }
-  
+
     .builder-actions {
       display: flex;
       gap: 8px;
     }
 
-    /* Perfect Proportional Symmetry for Buttons */
+    /* Control Block Buttons */
     .ctrl-btn {
       width: 100%;
       padding: 14px;
@@ -175,31 +185,99 @@
       border-radius: 6px;
       font-size: 14px;
       font-weight: 600;
-      cursor: pointer;
       transition: all 0.2s ease;
-      border: 1px solid var(--border-color);
     }
     .ctrl-btn:last-child { margin-bottom: 0; }
 
-    /* Button States */
-    .btn-outline {
-      background-color: transparent;
-      color: var(--text-muted);
+    /* Unclickable Status Indicator */
+    .btn-status-green {
+      background-color: rgba(16, 185, 129, 0.15);
+      border: 1px solid var(--success);
+      color: var(--success);
+      cursor: default;
     }
-    .btn-outline:hover {
-      border-color: var(--text-main);
-      color: var(--text-main);
+
+    .btn-status-red {
+      background-color: rgba(244, 63, 94, 0.15);
+      border: 1px solid var(--danger);
+      color: var(--danger);
+      cursor: default;
     }
-    .btn-active-blue {
+
+    /* Primary Baby/Vibrant Blue Action Toggle */
+    .btn-action-blue {
       background-color: var(--accent-blue);
-      border-color: var(--accent-blue);
-      color: #fff;
+      border: 1px solid var(--accent-blue);
+      color: #ffffff;
+      cursor: pointer;
     }
-    .btn-active-danger {
-      background-color: var(--danger);
-      border-color: var(--danger);
-      color: #fff;
+
+    .btn-action-blue:hover {
+      background-color: var(--accent-blue-hover);
     }
+
+    /* Static Terminal Button */
+    .btn-outline-terminal {
+      background-color: transparent;
+      color: #94a3b8;
+      border: 1px solid #334155;
+      margin-top: 4px;
+      cursor: pointer;
+    }
+
+    .btn-outline-terminal:hover {
+      color: #f8fafc;
+      border-color: #475569;
+    }
+
+    /* Live Edge Telemetry Panel */
+    .telemetry-box {
+      background-color: transparent;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 16px;
+      margin-top: 16px;
+      text-align: left;
+    }
+
+    .telemetry-header {
+      color: #64748b;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+    }
+
+    .telemetry-grid {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .telemetry-stat {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .stat-label {
+      color: #64748b;
+      font-size: 10px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .stat-value {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+    }
+
+    .val-blue { color: #3b82f6; }
+    .val-red { color: #ef4444; }
+    .val-white { color: #f8fafc; }
 
     /* Modal Overlays */
     .modal {
@@ -211,9 +289,9 @@
       margin-bottom: 24px;
       text-align: center;
     }
-    
+
     .modal-highlight {
-      font-family: ui-monospace, monospace;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       font-size: 24px;
       letter-spacing: 0.2em;
       color: var(--success);
@@ -242,72 +320,92 @@
       </div>
       <div class="panel-sub">Browser Control Unit</div>
 
-      <div style="text-align: left; font-size: 10px; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em;">Child Device Token</div>
+      <div class="field-label">Child Device Token</div>
       <input type="text" id="child-id" class="token-box" placeholder="cont_xxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false">
 
-      <!-- Segment Selector & Trigger -->
-      <div style="text-align: left; font-size: 10px; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em;">Operating Hours Segment</div>
+      <!-- Segment Selector & Builder Trigger -->
+      <div class="field-label">Operating Hours Segment</div>
       <div class="segment-row">
-  	<select id="segment-select" class="segment-select">
+        <select id="segment-select" class="segment-select">
+          <option value="degraded" data-tier="degraded" data-label="Degraded Mode">Degraded Mode (Default)</option>
           <option value="standard" data-tier="standard" data-label="Standard Mode">Standard Mode (Default)</option>
-    	  <option value="degraded" data-tier="degraded" data-label="Degraded Mode">Degraded Mode (Default)</option>
         </select>
-       	<button id="btn-toggle-builder" class="btn-new-segment">+ New Segment</button>
+        <button id="btn-toggle-builder" class="btn-new-segment">+ New Segment</button>
       </div>
 
       <!-- Collapsible Blank-Slate Segment Builder -->
       <div id="segment-builder" class="segment-builder">
-  	<label class="builder-label">Segment Name</label>
-	<input type="text" id="seg-name" class="builder-input" placeholder="e.g., Quiet Time, Reading Mode" autocomplete="off">
+        <label class="builder-label">Segment Name</label>
+        <input type="text" id="seg-name" class="builder-input" placeholder="e.g., Quiet Time, Reading Mode" autocomplete="off">
 
-  	<label class="builder-label">Enforcement Tier</label>
-  	<select id="seg-tier" class="builder-tier">
-    	  <option value="degraded">Degraded Mode (Restricted + Edge Proxy)</option>
-    	  <option value="standard">Standard Mode (Baseline Perimeter)</option>
-    	  <option value="custom">Custom Mode (Scheduled / Mapped Hybrid)</option>
-  	</select>
+        <label class="builder-label">Enforcement Tier</label>
+        <select id="seg-tier" class="builder-tier">
+          <option value="degraded">Degraded Mode (Restricted + Edge Proxy)</option>
+          <option value="standard">Standard Mode (Baseline Perimeter)</option>
+          <option value="custom">Custom Mode (Scheduled / Mapped Hybrid)</option>
+        </select>
 
         <div class="time-window-grid">
           <div>
             <label class="builder-label">Start Time</label>
             <input type="time" id="seg-start" class="builder-input" style="margin-bottom: 0;">
           </div>
-        <div>
-          <label class="builder-label">End Time</label>
-          <input type="time" id="seg-end" class="builder-input" style="margin-bottom: 0;">
+          <div>
+            <label class="builder-label">End Time</label>
+            <input type="time" id="seg-end" class="builder-input" style="margin-bottom: 0;">
+          </div>
+        </div>
+
+        <div class="builder-actions">
+          <button id="btn-save-segment" class="ctrl-btn btn-action-blue" style="padding: 10px; margin-bottom: 0; font-size: 13px;">Save Segment</button>
+          <button id="btn-cancel-segment" class="ctrl-btn btn-outline-terminal" style="padding: 10px; margin-top: 0; margin-bottom: 0; font-size: 13px;">Cancel</button>
         </div>
       </div>
 
-      <div class="builder-actions">
-        <button id="btn-save-segment" class="ctrl-btn btn-action-blue" style="padding: 10px; margin-bottom: 0; font-size: 13px;">Save Segment</button>
-        <button id="btn-cancel-segment" class="ctrl-btn btn-outline-terminal" style="padding: 10px; margin-top: 0; margin-bottom: 0; font-size: 13px;">Cancel</button>
+      <!-- 3-Button Symmetrical Control Block -->
+      <div class="control-block">
+        <button id="btn-status" class="ctrl-btn btn-status-green">Standard Mode Engaged</button>
+        <button id="btn-action" class="ctrl-btn btn-action-blue">Engage Degraded Mode</button>
+        <button id="btn-audit" class="ctrl-btn btn-outline-terminal">Terminal: View Edge Audit Log</button>
       </div>
-    </div>
 
-    <div class="control-block">
-      <button id="btn-standard" class="ctrl-btn btn-outline">STANDARD ACCESS</button>
-      <button id="btn-homework" class="ctrl-btn btn-outline">Engage Homework Mode</button>
-      <button id="btn-audit" class="ctrl-btn btn-outline">Terminal: View Edge Audit Log</button>
-    </div>
-      
+      <!-- Hidden Live Telemetry Panel -->
+      <div id="telemetry-panel" class="telemetry-box" style="display: none;">
+        <div class="telemetry-header">Live Edge Telemetry</div>
+        <div class="telemetry-grid">
+          <div class="telemetry-stat">
+            <div class="stat-label">Payloads Isolated</div>
+            <div class="stat-value val-blue">0006</div>
+          </div>
+          <div class="telemetry-stat">
+            <div class="stat-label">Trackers Blocked</div>
+            <div class="stat-value val-red">0021</div>
+          </div>
+          <div class="telemetry-stat">
+            <div class="stat-label">Data Saved</div>
+            <div class="stat-value val-white">0.32 MB</div>
+          </div>
+        </div>
+      </div>
+
       <div id="api-feedback" class="feedback"></div>
     </div>
 
-    <!-- OTP Display Modal (Shown only once upon engagement) -->
+    <!-- OTP Display Modal -->
     <div id="modal-otp-display" class="modal" style="border-color: var(--success);">
       <div style="color: var(--success); font-weight: 600; margin-bottom: 8px;">Proxy Engaged</div>
-      <div style="font-size: 13px; color: var(--text-muted);">Homework mode active. It will auto-terminate in 4 hours. Your emergency override OTP is:</div>
+      <div style="font-size: 13px; color: var(--text-muted);">Operating hours segment active. Your emergency override OTP is:</div>
       <div id="otp-value-display" class="modal-highlight">829-104</div>
-      <button id="btn-close-otp-display" class="ctrl-btn btn-outline">Acknowledge & Close</button>
+      <button id="btn-close-otp-display" class="ctrl-btn btn-outline-terminal">Acknowledge & Close</button>
     </div>
 
-    <!-- OTP Input Modal (Shown when attempting to downgrade) -->
+    <!-- OTP Input Modal -->
     <div id="modal-otp-input" class="modal" style="border-color: var(--danger);">
       <div style="color: var(--danger); font-weight: 600; margin-bottom: 8px;">Authorization Required</div>
-      <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">Enter the active session OTP to override the proxy early.</div>
+      <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">Enter the active session OTP to return to Standard Mode.</div>
       <input type="text" id="input-override-otp" class="token-box" placeholder="000-000" maxlength="7" style="text-align: center; font-size: 20px; letter-spacing: 0.1em;">
-      <button id="btn-submit-override" class="ctrl-btn btn-active-danger">Authorize Downgrade</button>
-      <button id="btn-cancel-override" class="ctrl-btn btn-outline" style="border: none;">Abort</button>
+      <button id="btn-submit-override" class="ctrl-btn btn-status-red" style="cursor: pointer;">Authorize Override</button>
+      <button id="btn-cancel-override" class="ctrl-btn btn-outline-terminal" style="border: none;">Abort</button>
     </div>
   </div>
 
@@ -316,16 +414,10 @@
     const DGF_API_KEY = "00e625db6549070e7198c9e24e42ef70";
 
     const inputChildId = document.getElementById('child-id');
-    const btnStandard = document.getElementById('btn-standard');
-    const btnHomework = document.getElementById('btn-homework');
+    const btnStatus = document.getElementById('btn-status');
+    const btnAction = document.getElementById('btn-action');
+    const telemetryPanel = document.getElementById('telemetry-panel');
     const feedback = document.getElementById('api-feedback');
-    
-    const modalOtpDisplay = document.getElementById('modal-otp-display');
-    const otpValueDisplay = document.getElementById('otp-value-display');
-    const modalOtpInput = document.getElementById('modal-otp-input');
-    const inputOverrideOtp = document.getElementById('input-override-otp');
-
-    let isCurrentlyDegraded = false;
 
     const segmentSelect = document.getElementById('segment-select');
     const btnToggleBuilder = document.getElementById('btn-toggle-builder');
@@ -333,10 +425,16 @@
     const btnSaveSegment = document.getElementById('btn-save-segment');
     const btnCancelSegment = document.getElementById('btn-cancel-segment');
 
-    let activeSegmentLabel = "Standard Mode";
+    const modalOtpDisplay = document.getElementById('modal-otp-display');
+    const otpValueDisplay = document.getElementById('otp-value-display');
+    const modalOtpInput = document.getElementById('modal-otp-input');
+    const inputOverrideOtp = document.getElementById('input-override-otp');
+
+    let isCurrentlyDegraded = false;
+    let activeSegmentLabel = "Degraded Mode";
     let selectedSegmentLabel = "Degraded Mode";
 
-    // Load saved custom segments from localStorage
+    // Load saved custom segments
     const savedSegments = JSON.parse(localStorage.getItem('dgf_custom_segments') || '[]');
     savedSegments.forEach(addSegmentOptionToDOM);
 
@@ -352,7 +450,6 @@
       segmentSelect.appendChild(opt);
     }
 
-    // Toggle Blank-Slate Builder Drawer
     btnToggleBuilder.addEventListener('click', () => {
       const isHidden = segmentBuilder.style.display === 'none' || !segmentBuilder.style.display;
       segmentBuilder.style.display = isHidden ? 'block' : 'none';
@@ -362,129 +459,79 @@
       segmentBuilder.style.display = 'none';
     });
 
-    // Save New Segment
     btnSaveSegment.addEventListener('click', () => {
       const name = document.getElementById('seg-name').value.trim();
       const tier = document.getElementById('seg-tier').value;
       const start = document.getElementById('seg-start').value;
       const end = document.getElementById('seg-end').value;
 
-    if (!name) return showFeedback("Segment name required.", "var(--danger)");
+      if (!name) return showFeedback("Segment name required.", "var(--danger)");
 
-    const newSeg = { id: 'seg_' + Date.now(), name, tier, start, end };
-    savedSegments.push(newSeg);
-    localStorage.setItem('dgf_custom_segments', JSON.stringify(savedSegments));
+      const newSeg = { id: 'seg_' + Date.now(), name, tier, start, end };
+      savedSegments.push(newSeg);
+      localStorage.setItem('dgf_custom_segments', JSON.stringify(savedSegments));
 
-    addSegmentOptionToDOM(newSeg);
-    segmentSelect.value = newSeg.id;
-    selectedSegmentLabel = newSeg.name;
-    segmentBuilder.style.display = 'none';
-    document.getElementById('seg-name').value = '';
-    updateUI();
-  });
-
-  // Update Action Button Text When Dropdown Changes
-  segmentSelect.addEventListener('change', () => {
-    const selectedOpt = segmentSelect.options[segmentSelect.selectedIndex];
-    selectedSegmentLabel = selectedOpt.dataset.label;
-    updateUI();
-  });
-
-  // Updated Two-Button Visual State Machine
-  function updateUI() {
-    if (isCurrentlyDegraded) {
-      btnStatus.className = "ctrl-btn btn-status-red";
-      btnStatus.innerText = `${activeSegmentLabel} Engaged`;
-      btnAction.innerText = "Engage Standard Mode";
-      telemetryPanel.style.display = 'block';
-    } else {
-      btnStatus.className = "ctrl-btn btn-status-green";
-      btnStatus.innerText = "Standard Mode Engaged";
-      const targetLabel = selectedSegmentLabel === "Standard Mode" ? "Degraded Mode" : selectedSegmentLabel;
-      btnAction.innerText = `Engage ${targetLabel}`;
-      telemetryPanel.style.display = 'none';
-    }
-  }
-    // Load saved token
-    const savedToken = localStorage.getItem('dgf_child_token');
-    if (savedToken) {
-      inputChildId.value = savedToken;
-      checkCurrentState(savedToken);
-    }
-
-    inputChildId.addEventListener('input', (e) => {
-      if (e.target.value.startsWith('cont_')) checkCurrentState(e.target.value);
+      addSegmentOptionToDOM(newSeg);
+      segmentSelect.value = newSeg.id;
+      selectedSegmentLabel = newSeg.name;
+      segmentBuilder.style.display = 'none';
+      document.getElementById('seg-name').value = '';
+      updateUI();
     });
 
-    async function checkCurrentState(token) {
-      // Mock logic for UI testing. Replace with your actual fetch.
+    segmentSelect.addEventListener('change', () => {
+      const selectedOpt = segmentSelect.options[segmentSelect.selectedIndex];
+      selectedSegmentLabel = selectedOpt.dataset.label;
       updateUI();
-    }
+    });
 
-    // -- ROUTING ACTIONS -- //
-
-    // 1. Engage Homework Mode (Free Upgrade)
-    btnHomework.addEventListener('click', async () => {
+    // Primary Action Toggle Button
+    btnAction.addEventListener('click', async () => {
       const token = inputChildId.value.trim();
       if (!token) return showFeedback("Token required.", "var(--danger)");
-      
-      if (!isCurrentlyDegraded) {
-        await executeStateChange(token, true);
-      }
-    });
 
-    // 2. Request Standard Access (Sudo Downgrade)
-    btnStandard.addEventListener('click', () => {
-      if (isCurrentlyDegraded) {
+      if (!isCurrentlyDegraded) {
+        activeSegmentLabel = selectedSegmentLabel === "Standard Mode" ? "Degraded Mode" : selectedSegmentLabel;
+        await executeStateChange(token, true);
+      } else {
         modalOtpInput.style.display = 'block';
         inputOverrideOtp.focus();
       }
     });
 
-    // 3. Submit Override OTP
     document.getElementById('btn-submit-override').addEventListener('click', async () => {
       const token = inputChildId.value.trim();
       const otp = inputOverrideOtp.value.trim();
       if (otp.length < 6) return showFeedback("Invalid OTP format.", "var(--danger)");
-      
       await executeStateChange(token, false, otp);
     });
 
-    // 4. Cancel/Close Modals
     document.getElementById('btn-cancel-override').addEventListener('click', () => {
       modalOtpInput.style.display = 'none';
       inputOverrideOtp.value = '';
     });
-    
+
     document.getElementById('btn-close-otp-display').addEventListener('click', () => {
       modalOtpDisplay.style.display = 'none';
     });
 
-    // -- CORE ENGINE -- //
     async function executeStateChange(token, targetState, otp = null) {
       showFeedback("Transmitting...", "var(--text-muted)");
-      
       try {
-        const response = await fetch(`${API_BASE}/toggle-state`, {
+        await fetch(`${API_BASE}/toggle-state`, {
           method: "POST",
           headers: { "Content-Type": "application/json", "Authorization": `Bearer ${DGF_API_KEY}` },
           body: JSON.stringify({ continuity_ref: token, is_degraded: targetState, auth_otp: otp })
         });
 
-        // Simulate success for UI testing
-        // if (response.ok) { ... }
-        
         isCurrentlyDegraded = targetState;
         updateUI();
         showFeedback("Command accepted by edge proxy.", "var(--success)");
 
         if (targetState === true) {
-          // Homework Mode engaged - show the ephemeral OTP
-          // In production, parse this from response.json().generated_otp
           otpValueDisplay.innerText = Math.floor(100000 + Math.random() * 900000).toString().replace(/(\d{3})(\d{3})/, '$1-$2');
           modalOtpDisplay.style.display = 'block';
         } else {
-          // Standard Access restored - hide input modal
           modalOtpInput.style.display = 'none';
           inputOverrideOtp.value = '';
         }
@@ -493,16 +540,18 @@
       }
     }
 
-    // -- VISUAL STATE MACHINE -- //
     function updateUI() {
       if (isCurrentlyDegraded) {
-        btnStandard.className = "ctrl-btn btn-outline";
-        btnHomework.className = "ctrl-btn btn-active-blue";
-        btnHomework.innerText = "Homework Mode Active";
+        btnStatus.className = "ctrl-btn btn-status-red";
+        btnStatus.innerText = `${activeSegmentLabel} Engaged`;
+        btnAction.innerText = "Engage Standard Mode";
+        telemetryPanel.style.display = 'block';
       } else {
-        btnStandard.className = "ctrl-btn btn-active-blue";
-        btnHomework.className = "ctrl-btn btn-outline";
-        btnHomework.innerText = "Engage Homework Mode";
+        btnStatus.className = "ctrl-btn btn-status-green";
+        btnStatus.innerText = "Standard Mode Engaged";
+        const targetLabel = selectedSegmentLabel === "Standard Mode" ? "Degraded Mode" : selectedSegmentLabel;
+        btnAction.innerText = `Engage ${targetLabel}`;
+        telemetryPanel.style.display = 'none';
       }
     }
 
