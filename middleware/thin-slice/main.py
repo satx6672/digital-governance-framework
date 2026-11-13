@@ -283,11 +283,11 @@ async def init_db():
         	installation_uuid TEXT PRIMARY KEY,
         	status TEXT NOT NULL,
         	created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        	product_id TEXT NOT NULL DEFAULT 'dgf_middleware'
-    	    )
-	"""))
+                product_id TEXT NOT NULL DEFAULT 'dgf_middleware'
+            )
+        """))
 
-# Add these index creations right after the acqs table creation
+        # Add these index creations right after the acqs table creation
         await conn.execute(text("""
             CREATE INDEX IF NOT EXISTS idx_srvs_passport_ref ON srvs(passport_ref)
         """))
@@ -317,66 +317,66 @@ async def init_db():
             CREATE INDEX IF NOT EXISTS idx_provisionals_target_passport ON provisionals(target_passport_ref)
         """))
 
-# 5. Trigger database creation on server startup
-@app.on_event("startup")
-async def on_startup():
-    await init_db()
+    # 5. Trigger database creation on server startup
+    @app.on_event("startup")
+    async def on_startup():
+        await init_db()
 
-class ToggleStateRequest(BaseModel):
-    continuity_ref: str
-    is_degraded: bool
+    class ToggleStateRequest(BaseModel):
+        continuity_ref: str
+        is_degraded: bool
 
-class ACQRequest(BaseModel):
-    srv_id: Optional[str] = None
-    target_passport_ref: str
-    requesting_platform: Optional[str] = None
-    query_type: str = "STRUCTURAL_CATEGORY_SYNTAX"
-    nonce: Optional[str] = None
+    class ACQRequest(BaseModel):
+        srv_id: Optional[str] = None
+        target_passport_ref: str
+        requesting_platform: Optional[str] = None
+        query_type: str = "STRUCTURAL_CATEGORY_SYNTAX"
+        nonce: Optional[str] = None
 
-class ACQResponse(BaseModel):
-    acq_id: str
-    srv_id: Optional[str] = None
-    status: str
-    timestamp: str
-    error_detail: Optional[str] = None
+    class ACQResponse(BaseModel):
+        acq_id: str
+        srv_id: Optional[str] = None
+        status: str
+        timestamp: str
+        error_detail: Optional[str] = None
 
-class RevokeProvisionalRequest(BaseModel):
-    provisional_id: str
-    target_passport_ref: str
-    reason: str
-    evidence_ref: Optional[str] = None
+    class RevokeProvisionalRequest(BaseModel):
+        provisional_id: str
+        target_passport_ref: str
+        reason: str
+        evidence_ref: Optional[str] = None
 
-class ProvisionalRequest(BaseModel):
-    target_passport_ref: str
-    action_type: str
-    expiry: str
-    originating_srv_ids: list[str]
-    degraded_mode: Optional[bool] = False
-    actor_type: Optional[str] = None
+    class ProvisionalRequest(BaseModel):
+        target_passport_ref: str
+        action_type: str
+        expiry: str
+        originating_srv_ids: list[str]
+        degraded_mode: Optional[bool] = False
+        actor_type: Optional[str] = None
 
-class SRVRequest(BaseModel):
-    passport_ref: str
-    harm_class: str
-    severity: str
-    confidence: float
-    timestamp: str
-    emitter: str
-    actor_type: Optional[str] = None
-    degraded_emission: Optional[bool] = False
+    class SRVRequest(BaseModel):
+        passport_ref: str
+        harm_class: str
+        severity: str
+        confidence: float
+        timestamp: str
+        emitter: str
+        actor_type: Optional[str] = None
+        degraded_emission: Optional[bool] = False
 
-class ContinuityRequest(BaseModel):
-    verifiablePresentation: Any
-    installation_uuid: Optional[str] = None
-    product_id: Optional[str] = "dgf_middleware"
+    class ContinuityRequest(BaseModel):
+        verifiablePresentation: Any
+        installation_uuid: Optional[str] = None
+        product_id: Optional[str] = "dgf_middleware"
 
-class ContinuityResponse(BaseModel):
-    continuity_ref: str
-    expires_at: str
-    degraded: bool
-    actor_type: str
-    sponsor_did: Optional[str] = None
+    class ContinuityResponse(BaseModel):
+        continuity_ref: str
+        expires_at: str
+        degraded: bool
+        actor_type: str
+        sponsor_did: Optional[str] = None
 
-if DEBUG_MODE:
+    if DEBUG_MODE:
     @app.get("/debug/acqs")
     async def list_acqs(_: None = Depends(require_api_key), db: AsyncSession = Depends(get_db)):
         result = await db.execute(text("""
@@ -473,264 +473,264 @@ if DEBUG_MODE:
         await init_db()
         return {"message": "Database tables initialized"}
 
-@app.get("/")
-def read_root():
-    return {
-        "status": "ok",
-        "message": "DGF Middleware thin slice is running"
-    }
+    @app.get("/")
+    def read_root():
+        return {
+            "status": "ok",
+            "message": "DGF Middleware thin slice is running"
+        }
 
-@app.get("/dashboard", response_class=HTMLResponse)
-async def parent_dashboard():
-    # Dynamically get the directory where main.py is currently running
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    file_path = os.path.join(current_dir, "index.html")
+    @app.get("/dashboard", response_class=HTMLResponse)
+    async def parent_dashboard():
+        # Dynamically get the directory where main.py is currently running
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        file_path = os.path.join(current_dir, "index.html")
  
-    try:
-        with open(file_path, "r", encoding="utf-8") as file:
-            return file.read()
-    except FileNotFoundError:
-        return f"<h1>Error: Cannot find index.html</h1><p>Looked in: {file_path}</p>"
+        try:
+            with open(file_path, "r", encoding="utf-8") as file:
+                return file.read()
+        except FileNotFoundError:
+            return f"<h1>Error: Cannot find index.html</h1><p>Looked in: {file_path}</p>"
 
-@app.get("/privacy", response_class=HTMLResponse)
-async def privacy_policy():
-    return """
-    <html>
-        <head><title>Privacy Policy - DGF Middleware</title></head>
-        <body style="font-family: sans-serif; max-width: 800px; margin: 40px auto; line-height: 1.6;">
-            <h2>Privacy Policy for DGF Middleware Edge Proxy</h2>
-            <p><strong>Last Updated: October 2026</strong></p>
-            <p><strong>1. Data Collection:</strong> DGF Middleware processes browsing network requests locally to block trackers. Basic telemetry regarding blocked trackers (Multiplicity Principle data) is transmitted securely to our cloud engine strictly for operational continuity.</p>
-            <p><strong>2. Data Usage & Sharing:</strong> We do not sell, rent, or monetize your personal data, browsing history, or tracking analytics to third parties.</p>
-            <p><strong>3. Permissions:</strong> The extension requires permissions such as <code>declarativeNetRequest</code> and <code>storage</code> solely to function securely as an edge proxy.</p>
-            <p><strong>4. Contact:</strong> For any privacy-related questions, please contact the developer via the Chrome Web Store support tab.</p>
-        </body>
-    </html>
-    """
+    @app.get("/privacy", response_class=HTMLResponse)
+    async def privacy_policy():
+        return """
+        <html>
+            <head><title>Privacy Policy - DGF Middleware</title></head>
+            <body style="font-family: sans-serif; max-width: 800px; margin: 40px auto; line-height: 1.6;">
+                <h2>Privacy Policy for DGF Middleware Edge Proxy</h2>
+                <p><strong>Last Updated: October 2026</strong></p>
+                <p><strong>1. Data Collection:</strong> DGF Middleware processes browsing network requests locally to block trackers. Basic telemetry regarding blocked trackers (Multiplicity Principle data) is transmitted securely to our cloud engine strictly for operational continuity.</p>
+                <p><strong>2. Data Usage & Sharing:</strong> We do not sell, rent, or monetize your personal data, browsing history, or tracking analytics to third parties.</p>
+                <p><strong>3. Permissions:</strong> The extension requires permissions such as <code>declarativeNetRequest</code> and <code>storage</code> solely to function securely as an edge proxy.</p>
+                <p><strong>4. Contact:</strong> For any privacy-related questions, please contact the developer via the Chrome Web Store support tab.</p>
+            </body>
+         </html>
+        """
 
-@app.post("/continuity", response_model=ContinuityResponse)
-async def establish_continuity(
-    request: ContinuityRequest,
-    _: None = Depends(require_api_key),
-    db: AsyncSession = Depends(get_db)
-):
-    if request.verifiablePresentation is None:
-        raise HTTPException(status_code=400, detail="verifiablePresentation is required")
+    @app.post("/continuity", response_model=ContinuityResponse)
+    async def establish_continuity(
+        request: ContinuityRequest,
+        _: None = Depends(require_api_key),
+        db: AsyncSession = Depends(get_db)
+    ):
+        if request.verifiablePresentation is None:
+            raise HTTPException(status_code=400, detail="verifiablePresentation is required")
 
-    if not request.installation_uuid:
-        print("[SECURITY BLOCK] Scraped key rejected — missing installation_uuid.")
-        raise HTTPException(status_code=403, detail="Registered installation_uuid is required")
+        if not request.installation_uuid:
+            print("[SECURITY BLOCK] Scraped key rejected — missing installation_uuid.")
+            raise HTTPException(status_code=403, detail="Registered installation_uuid is required")
 
-    lic_check = await db.execute(
-        text("SELECT status FROM middleware_licenses WHERE installation_uuid = :uuid"),
-        {"uuid": request.installation_uuid}
-    )
-    if lic_check.fetchone() is None:
-        print(f"[SECURITY BLOCK] Scraped key rejected — unregistered UUID: {request.installation_uuid}")
-        raise HTTPException(status_code=403, detail="Unregistered installation_uuid")
+        lic_check = await db.execute(
+            text("SELECT status FROM middleware_licenses WHERE installation_uuid = :uuid"),
+            {"uuid": request.installation_uuid}
+        )
+        if lic_check.fetchone() is None:
+            print(f"[SECURITY BLOCK] Scraped key rejected — unregistered UUID: {request.installation_uuid}")
+            raise HTTPException(status_code=403, detail="Unregistered installation_uuid")
 
-    continuity_ref = f"cont_{uuid.uuid4().hex[:16]}"
-    now = datetime.now(timezone.utc)
-    expires_at = now + timedelta(hours=4)
+        continuity_ref = f"cont_{uuid.uuid4().hex[:16]}"
+        now = datetime.now(timezone.utc)
+        expires_at = now + timedelta(hours=4)
 
-    # Store in database asynchronously
-    await db.execute(
-        text("""
-            INSERT INTO continuity_references (
-                continuity_ref, expires_at, created_at, actor_type, degraded, product_id
-            )
-            VALUES (:ref, :exp, :creat, :actor, :deg, :prod_id)
-        """),
-        {
-            "ref": continuity_ref,
-            "exp": expires_at.isoformat().replace("+00:00", "Z"),
-            "creat": now.isoformat().replace("+00:00", "Z"),
-            "actor": "human",
-            "deg": 0,
-            "prod_id": request.product_id or "dgf_middleware"
+        # Store in database asynchronously
+        await db.execute(
+            text("""
+                INSERT INTO continuity_references (
+                    continuity_ref, expires_at, created_at, actor_type, degraded, product_id
+                )
+                VALUES (:ref, :exp, :creat, :actor, :deg, :prod_id)
+            """),
+            {
+                "ref": continuity_ref,
+                "exp": expires_at.isoformat().replace("+00:00", "Z"),
+                "creat": now.isoformat().replace("+00:00", "Z"),
+                "actor": "human",
+                "deg": 0,
+                "prod_id": request.product_id or "dgf_middleware"
+            }
+        )
+        await db.commit()
+
+        return {
+            "continuity_ref": continuity_ref,
+            "expires_at": expires_at.isoformat().replace("+00:00", "Z"),
+            "degraded": False,
+            "actor_type": "human"
         }
-    )
-    await db.commit()
 
-    return {
-        "continuity_ref": continuity_ref,
-        "expires_at": expires_at.isoformat().replace("+00:00", "Z"),
-        "degraded": False,
-        "actor_type": "human"
-    }
+    @app.post("/srv")
+    async def emit_srv(
+        request: SRVRequest,
+        _: None = Depends(require_api_key),
+        db: AsyncSession = Depends(get_db)
+    ):
+        # 1. Check that the Continuity Reference exists and is not expired
+        result = await db.execute(
+            text("""
+            SELECT expires_at FROM continuity_references
+            WHERE continuity_ref = :ref
+            """),
+            {"ref": request.passport_ref}
+        )
+        row = result.fetchone()
 
-@app.post("/srv")
-async def emit_srv(
-    request: SRVRequest,
-    _: None = Depends(require_api_key),
-    db: AsyncSession = Depends(get_db)
-):
-    # 1. Check that the Continuity Reference exists and is not expired
-    result = await db.execute(
-        text("""
-        SELECT expires_at FROM continuity_references
-        WHERE continuity_ref = :ref
-        """),
-        {"ref": request.passport_ref}
-    )
-    row = result.fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail="Continuity Reference not found")
 
-    if row is None:
-        raise HTTPException(status_code=404, detail="Continuity Reference not found")
+        expires_at = datetime.fromisoformat(row[0].replace("Z", "+00:00"))
+        now = datetime.now(timezone.utc)
 
-    expires_at = datetime.fromisoformat(row[0].replace("Z", "+00:00"))
-    now = datetime.now(timezone.utc)
+        if now > expires_at:
+            raise HTTPException(status_code=410, detail="Continuity Reference has expired")
 
-    if now > expires_at:
-        raise HTTPException(status_code=410, detail="Continuity Reference has expired")
+        # 2. Create and store the SRV
+        srv_id = f"srv_{uuid.uuid4().hex[:16]}"
+        created_at = now.isoformat().replace("+00:00", "Z")
 
-    # 2. Create and store the SRV
-    srv_id = f"srv_{uuid.uuid4().hex[:16]}"
-    created_at = now.isoformat().replace("+00:00", "Z")
+        await db.execute(
+            text("""
+            INSERT INTO srvs (
+                srv_id, passport_ref, harm_class, severity, confidence,
+                timestamp, emitter, actor_type, degraded_emission, created_at
+            ) VALUES (:srv_id, :passport, :harm, :sev, :conf, :ts, :emit, :actor, :deg, :creat)
+            """),
+            {
+                "srv_id": srv_id,
+                "passport": request.passport_ref,
+                "harm": request.harm_class,
+                "sev": request.severity,
+                "conf": request.confidence,
+                "ts": request.timestamp,
+                "emit": request.emitter,
+                "actor": request.actor_type,
+                "deg": 1 if request.degraded_emission else 0,
+                "creat": created_at
+            }
+        )
+        await db.commit()
 
-    await db.execute(
-        text("""
-        INSERT INTO srvs (
-            srv_id, passport_ref, harm_class, severity, confidence,
-            timestamp, emitter, actor_type, degraded_emission, created_at
-        ) VALUES (:srv_id, :passport, :harm, :sev, :conf, :ts, :emit, :actor, :deg, :creat)
-        """),
-        {
+        return {
             "srv_id": srv_id,
-            "passport": request.passport_ref,
-            "harm": request.harm_class,
-            "sev": request.severity,
-            "conf": request.confidence,
-            "ts": request.timestamp,
-            "emit": request.emitter,
-            "actor": request.actor_type,
-            "deg": 1 if request.degraded_emission else 0,
-            "creat": created_at
+            "dampened_confidence": request.confidence * 0.85  # simple normal-mode dampener for now
         }
-    )
-    await db.commit()
 
-    return {
-        "srv_id": srv_id,
-        "dampened_confidence": request.confidence * 0.85  # simple normal-mode dampener for now
-    }
+    @app.post("/provisional")
+    async def issue_provisional(
+        request: ProvisionalRequest,
+        _: None = Depends(require_api_key),
+        db: AsyncSession = Depends(get_db)
+    ):
+        # 1. Check Continuity Reference exists and is not expired
+        result = await db.execute(
+            text("""
+            SELECT expires_at FROM continuity_references
+            WHERE continuity_ref = :ref
+            """),
+            {"ref": request.target_passport_ref}
+        )
+        row = result.fetchone()
 
-@app.post("/provisional")
-async def issue_provisional(
-    request: ProvisionalRequest,
-    _: None = Depends(require_api_key),
-    db: AsyncSession = Depends(get_db)
-):
-    # 1. Check Continuity Reference exists and is not expired
-    result = await db.execute(
-        text("""
-        SELECT expires_at FROM continuity_references
-        WHERE continuity_ref = :ref
-        """),
-        {"ref": request.target_passport_ref}
-    )
-    row = result.fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail="Continuity Reference not found")
 
-    if row is None:
-        raise HTTPException(status_code=404, detail="Continuity Reference not found")
+        expires_at = datetime.fromisoformat(row[0].replace("Z", "+00:00"))
+        now = datetime.now(timezone.utc)
 
-    expires_at = datetime.fromisoformat(row[0].replace("Z", "+00:00"))
-    now = datetime.now(timezone.utc)
+        if now > expires_at:
+            raise HTTPException(status_code=410, detail="Continuity Reference has expired")
 
-    if now > expires_at:
-        raise HTTPException(status_code=410, detail="Continuity Reference has expired")
+        # 2. Basic check that at least one originating SRV exists
+        if not request.originating_srv_ids:
+            raise HTTPException(status_code=400, detail="At least one originating_srv_id is required")
 
-    # 2. Basic check that at least one originating SRV exists
-    if not request.originating_srv_ids:
-        raise HTTPException(status_code=400, detail="At least one originating_srv_id is required")
+        # 3. Create and store the Provisional
+        provisional_id = f"prov_{uuid.uuid4().hex[:16]}"
+        created_at = now.isoformat().replace("+00:00", "Z")
+        srv_ids_str = ",".join(request.originating_srv_ids)
 
-    # 3. Create and store the Provisional
-    provisional_id = f"prov_{uuid.uuid4().hex[:16]}"
-    created_at = now.isoformat().replace("+00:00", "Z")
-    srv_ids_str = ",".join(request.originating_srv_ids)
+        await db.execute(
+            text("""
+            INSERT INTO provisionals (
+                provisional_id, target_passport_ref, action_type, expiry,
+                originating_srv_ids, degraded_mode, actor_type, created_at, revoked
+            ) VALUES (:prov_id, :target, :action, :expiry, :orig_srvs, :deg, :actor, :creat, :revoked)
+            """),
+            {
+                "prov_id": provisional_id,
+                "target": request.target_passport_ref,
+                "action": request.action_type,
+                "expiry": request.expiry,
+                "orig_srvs": srv_ids_str,
+                "deg": 1 if request.degraded_mode else 0,
+                "actor": request.actor_type,
+                "creat": created_at,
+                "revoked": 0
+            }
+        )
+        await db.commit()
 
-    await db.execute(
-        text("""
-        INSERT INTO provisionals (
-            provisional_id, target_passport_ref, action_type, expiry,
-            originating_srv_ids, degraded_mode, actor_type, created_at, revoked
-        ) VALUES (:prov_id, :target, :action, :expiry, :orig_srvs, :deg, :actor, :creat, :revoked)
-        """),
-        {
-            "prov_id": provisional_id,
-            "target": request.target_passport_ref,
-            "action": request.action_type,
-            "expiry": request.expiry,
-            "orig_srvs": srv_ids_str,
-            "deg": 1 if request.degraded_mode else 0,
-            "actor": request.actor_type,
-            "creat": created_at,
-            "revoked": 0
+        return {
+            "provisional_id": provisional_id
         }
-    )
-    await db.commit()
 
-    return {
-        "provisional_id": provisional_id
-    }
+    @app.post("/provisional/{provisional_id}/revoke")
+    async def revoke_provisional(
+        provisional_id: str,
+        request: RevokeProvisionalRequest,
+        _: None = Depends(require_api_key),
+        db: AsyncSession = Depends(get_db)
+    ):
+        if provisional_id != request.provisional_id:
+            raise HTTPException(
+                status_code=400,
+                detail="provisional_id in path and body must match"
+            )
 
-@app.post("/provisional/{provisional_id}/revoke")
-async def revoke_provisional(
-    provisional_id: str,
-    request: RevokeProvisionalRequest,
-    _: None = Depends(require_api_key),
-    db: AsyncSession = Depends(get_db)
-):
-    if provisional_id != request.provisional_id:
-        raise HTTPException(
-            status_code=400,
-            detail="provisional_id in path and body must match"
+        result = await db.execute(
+            text("""
+            SELECT provisional_id, target_passport_ref, revoked
+            FROM provisionals
+            WHERE provisional_id = :prov_id
+            """),
+            {"prov_id": provisional_id}
         )
+        row = result.fetchone()
 
-    result = await db.execute(
-        text("""
-        SELECT provisional_id, target_passport_ref, revoked
-        FROM provisionals
-        WHERE provisional_id = :prov_id
-        """),
-        {"prov_id": provisional_id}
-    )
-    row = result.fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail="Provisional not found")
 
-    if row is None:
-        raise HTTPException(status_code=404, detail="Provisional not found")
+        if row[1] != request.target_passport_ref:
+            raise HTTPException(
+                status_code=400,
+                detail="target_passport_ref does not match this Provisional"
+            )
 
-    if row[1] != request.target_passport_ref:
-        raise HTTPException(
-            status_code=400,
-            detail="target_passport_ref does not match this Provisional"
+        if row[2] == 1:
+            raise HTTPException(status_code=409, detail="Provisional already revoked")
+
+        await db.execute(
+            text("""
+            UPDATE provisionals
+            SET revoked = 1
+            WHERE provisional_id = :prov_id
+            """),
+            {"prov_id": provisional_id}
         )
+        await db.commit()
 
-    if row[2] == 1:
-        raise HTTPException(status_code=409, detail="Provisional already revoked")
+        return {
+            "status": "revoked",
+            "provisional_id": provisional_id,
+            "reason": request.reason
+        }
 
-    await db.execute(
-        text("""
-        UPDATE provisionals
-        SET revoked = 1
-        WHERE provisional_id = :prov_id
-        """),
-        {"prov_id": provisional_id}
-    )
-    await db.commit()
-
-    return {
-        "status": "revoked",
-        "provisional_id": provisional_id,
-        "reason": request.reason
-    }
-
-@app.get("/check-state")
-async def check_emission_state(
-    continuity_ref: str,
-    _: None = Depends(require_api_key),
-    db: AsyncSession = Depends(get_db)
-):
+    @app.get("/check-state")
+    async def check_emission_state(
+        continuity_ref: str,
+        _: None = Depends(require_api_key),
+        db: AsyncSession = Depends(get_db)
+    ):
     # The child's extension polls this endpoint to get the current degraded state
     result = await db.execute(
         text("""
@@ -750,108 +750,108 @@ async def check_emission_state(
         "is_degraded": bool(row[0])
     }
 
-@app.post("/toggle-state")
-async def toggle_emission_state(
-    request: ToggleStateRequest,
-    _: None = Depends(require_api_key),
-    db: AsyncSession = Depends(get_db)
-):
-    # 1. Verify the session token exists
-    result = await db.execute(
-        text("SELECT continuity_ref FROM continuity_references WHERE continuity_ref = :ref"),
-        {"ref": request.continuity_ref}
-    )
-    if result.fetchone() is None:
-        raise HTTPException(status_code=404, detail="Continuity Reference not found")
+    @app.post("/toggle-state")
+    async def toggle_emission_state(
+        request: ToggleStateRequest,
+        _: None = Depends(require_api_key),
+        db: AsyncSession = Depends(get_db)
+    ):
+        # 1. Verify the session token exists
+        result = await db.execute(
+            text("SELECT continuity_ref FROM continuity_references WHERE continuity_ref = :ref"),
+            {"ref": request.continuity_ref}
+        )
+        if result.fetchone() is None:
+            raise HTTPException(status_code=404, detail="Continuity Reference not found")
 
-    # 2. Update the degraded state in PostgreSQL
-    degraded_int = 1 if request.is_degraded else 0
-    await db.execute(
-        text("""
-        UPDATE continuity_references
-        SET degraded = :deg
-        WHERE continuity_ref = :ref
-        """),
-        {
-            "deg": degraded_int,
-            "ref": request.continuity_ref
+        # 2. Update the degraded state in PostgreSQL
+        degraded_int = 1 if request.is_degraded else 0
+        await db.execute(
+            text("""
+            UPDATE continuity_references
+            SET degraded = :deg
+            WHERE continuity_ref = :ref
+            """),
+            {
+                "deg": degraded_int,
+                "ref": request.continuity_ref
+            }
+        )
+        await db.commit()
+
+        return {
+            "status": "success",
+            "continuity_ref": request.continuity_ref,
+            "new_state": "degraded" if request.is_degraded else "standard"
         }
-    )
-    await db.commit()
 
-    return {
-        "status": "success",
-        "continuity_ref": request.continuity_ref,
-        "new_state": "degraded" if request.is_degraded else "standard"
-    }
+    @app.post("/acq", response_model=ACQResponse)
+    async def issue_acq(
+        request: ACQRequest,
+        _: None = Depends(require_api_key),
+        db: AsyncSession = Depends(get_db)
+    ):
+        # Continuity must exist and not be expired
+        result = await db.execute(
+            text("""
+            SELECT expires_at FROM continuity_references
+            WHERE continuity_ref = :ref
+            """),
+            {"ref": request.target_passport_ref}
+        )
+        row = result.fetchone()
 
-@app.post("/acq", response_model=ACQResponse)
-async def issue_acq(
-    request: ACQRequest,
-    _: None = Depends(require_api_key),
-    db: AsyncSession = Depends(get_db)
-):
-    # Continuity must exist and not be expired
-    result = await db.execute(
-        text("""
-        SELECT expires_at FROM continuity_references
-        WHERE continuity_ref = :ref
-        """),
-        {"ref": request.target_passport_ref}
-    )
-    row = result.fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail="Continuity Reference not found")
 
-    if row is None:
-        raise HTTPException(status_code=404, detail="Continuity Reference not found")
-
-    expires_at = datetime.fromisoformat(row[0].replace("Z", "+00:00"))
-    now = datetime.now(timezone.utc)
-    if now > expires_at:
+        expires_at = datetime.fromisoformat(row[0].replace("Z", "+00:00"))
+        now = datetime.now(timezone.utc)
+        if now > expires_at:
         raise HTTPException(status_code=410, detail="Continuity Reference has expired")
 
-    # Thin policy: if srv_id provided, require it to exist
-    if request.srv_id:
-        srv_result = await db.execute(
-            text("SELECT srv_id FROM srvs WHERE srv_id = :srv_id"),
-            {"srv_id": request.srv_id}
-        )
-        if srv_result.fetchone() is None:
-            return {
-                "acq_id": f"acq_{uuid.uuid4().hex[:16]}",
+        # Thin policy: if srv_id provided, require it to exist
+        if request.srv_id:
+            srv_result = await db.execute(
+                text("SELECT srv_id FROM srvs WHERE srv_id = :srv_id"),
+                {"srv_id": request.srv_id}
+            )
+            if srv_result.fetchone() is None:
+                return {
+                    "acq_id": f"acq_{uuid.uuid4().hex[:16]}",
+                    "srv_id": request.srv_id,
+                    "status": "DENIED",
+                    "timestamp": now.isoformat().replace("+00:00", "Z"),
+                    "error_detail": "srv_id not found",
+                }
+
+        acq_id = f"acq_{uuid.uuid4().hex[:16]}"
+        status = "CONFIRMED"
+        created_at = now.isoformat().replace("+00:00", "Z")
+
+        await db.execute(
+            text("""
+            INSERT INTO acqs (
+                acq_id, srv_id, target_passport_ref, requesting_platform,
+                query_type, status, created_at, nonce
+            ) VALUES (:acq_id, :srv_id, :target, :req_plat, :q_type, :status, :creat, :nonce)
+            """),
+            {
+                "acq_id": acq_id,
                 "srv_id": request.srv_id,
-                "status": "DENIED",
-                "timestamp": now.isoformat().replace("+00:00", "Z"),
-                "error_detail": "srv_id not found",
+                "target": request.target_passport_ref,
+                "req_plat": request.requesting_platform,
+                "q_type": request.query_type,
+                "status": status,
+                "creat": created_at,
+                "nonce": request.nonce
             }
+        )
+        await db.commit()
 
-    acq_id = f"acq_{uuid.uuid4().hex[:16]}"
-    status = "CONFIRMED"
-    created_at = now.isoformat().replace("+00:00", "Z")
-
-    await db.execute(
-        text("""
-        INSERT INTO acqs (
-            acq_id, srv_id, target_passport_ref, requesting_platform,
-            query_type, status, created_at, nonce
-        ) VALUES (:acq_id, :srv_id, :target, :req_plat, :q_type, :status, :creat, :nonce)
-        """),
-        {
+        return {
             "acq_id": acq_id,
             "srv_id": request.srv_id,
-            "target": request.target_passport_ref,
-            "req_plat": request.requesting_platform,
-            "q_type": request.query_type,
             "status": status,
-            "creat": created_at,
-            "nonce": request.nonce
+            "timestamp": created_at,
+            "error_detail": None,
         }
-    )
-    await db.commit()
-
-    return {
-        "acq_id": acq_id,
-        "srv_id": request.srv_id,
-        "status": status,
-        "timestamp": created_at,
-        "error_detail": None,
-    }
