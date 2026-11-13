@@ -731,24 +731,24 @@ if DEBUG_MODE:
         _: None = Depends(require_api_key),
         db: AsyncSession = Depends(get_db)
     ):
-    # The child's extension polls this endpoint to get the current degraded state
-    result = await db.execute(
-        text("""
-        SELECT degraded FROM continuity_references
-        WHERE continuity_ref = :ref
-        """),
-        {"ref": continuity_ref}
-    )
-    row = result.fetchone()
+        # The child's extension polls this endpoint to get the current degraded state
+        result = await db.execute(
+            text("""
+            SELECT degraded FROM continuity_references
+            WHERE continuity_ref = :ref
+            """),
+            {"ref": continuity_ref}
+        )
+        row = result.fetchone()
 
-    if row is None:
-        raise HTTPException(status_code=404, detail="Continuity Reference not found")
+        if row is None:
+            raise HTTPException(status_code=404, detail="Continuity Reference not found")
 
-    # Return boolean value for the extension to parse
-    return {
-        "continuity_ref": continuity_ref,
-        "is_degraded": bool(row[0])
-    }
+        # Return boolean value for the extension to parse
+        return {
+            "continuity_ref": continuity_ref,
+            "is_degraded": bool(row[0])
+        }
 
     @app.post("/toggle-state")
     async def toggle_emission_state(
