@@ -1,4 +1,8 @@
-<!DOCTYPE html>
+  
+  
+  
+  
+  <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -245,11 +249,50 @@
       <div style="text-align: left; font-size: 10px; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em;">Child Device Token</div>
       <input type="text" id="child-id" class="token-box" placeholder="cont_xxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false">
 
-      <div class="control-block">
-        <button id="btn-standard" class="ctrl-btn btn-outline">STANDARD ACCESS</button>
-        <button id="btn-homework" class="ctrl-btn btn-outline">Engage Homework Mode</button>
-        <button id="btn-audit" class="ctrl-btn btn-outline">Terminal: View Edge Audit Log</button>
+      <!-- Segment Selector & Trigger -->
+      <div style="text-align: left; font-size: 10px; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em;">Operating Hours Segment</div>
+      <div class="segment-row">
+  	<select id="segment-select" class="segment-select">
+          <option value="standard" data-tier="standard" data-label="Standard Mode">Standard Mode (Default)</option>
+    	  <option value="degraded" data-tier="degraded" data-label="Degraded Mode">Degraded Mode (Default)</option>
+        </select>
+       	<button id="btn-toggle-builder" class="btn-new-segment">+ New Segment</button>
       </div>
+
+      <!-- Collapsible Blank-Slate Segment Builder -->
+      <div id="segment-builder" class="segment-builder">
+  	<label class="builder-label">Segment Name</label>
+	<input type="text" id="seg-name" class="builder-input" placeholder="e.g., Quiet Time, Reading Mode" autocomplete="off">
+
+  	<label class="builder-label">Enforcement Tier</label>
+  	<select id="seg-tier" class="builder-tier">
+    	  <option value="degraded">Degraded Mode (Restricted + Edge Proxy)</option>
+    	  <option value="standard">Standard Mode (Baseline Perimeter)</option>
+    	  <option value="custom">Custom Mode (Scheduled / Mapped Hybrid)</option>
+  	</select>
+
+        <div class="time-window-grid">
+          <div>
+            <label class="builder-label">Start Time</label>
+            <input type="time" id="seg-start" class="builder-input" style="margin-bottom: 0;">
+          </div>
+        <div>
+          <label class="builder-label">End Time</label>
+          <input type="time" id="seg-end" class="builder-input" style="margin-bottom: 0;">
+        </div>
+      </div>
+
+      <div class="builder-actions">
+        <button id="btn-save-segment" class="ctrl-btn btn-action-blue" style="padding: 10px; margin-bottom: 0; font-size: 13px;">Save Segment</button>
+        <button id="btn-cancel-segment" class="ctrl-btn btn-outline-terminal" style="padding: 10px; margin-top: 0; margin-bottom: 0; font-size: 13px;">Cancel</button>
+      </div>
+    </div>
+
+    <div class="control-block">
+      <button id="btn-standard" class="ctrl-btn btn-outline">STANDARD ACCESS</button>
+      <button id="btn-homework" class="ctrl-btn btn-outline">Engage Homework Mode</button>
+      <button id="btn-audit" class="ctrl-btn btn-outline">Terminal: View Edge Audit Log</button>
+    </div>
       
       <div id="api-feedback" class="feedback"></div>
     </div>
@@ -288,6 +331,84 @@
 
     let isCurrentlyDegraded = false;
 
+    const segmentSelect = document.getElementById('segment-select');
+    const btnToggleBuilder = document.getElementById('btn-toggle-builder');
+    const segmentBuilder = document.getElementById('segment-builder');
+    const btnSaveSegment = document.getElementById('btn-save-segment');
+    const btnCancelSegment = document.getElementById('btn-cancel-segment');
+
+    let activeSegmentLabel = "Standard Mode";
+    let selectedSegmentLabel = "Degraded Mode";
+
+    // Load saved custom segments from localStorage
+    const savedSegments = JSON.parse(localStorage.getItem('dgf_custom_segments') || '[]');
+    savedSegments.forEach(addSegmentOptionToDOM);
+
+    function addSegmentOptionToDOM(seg) {
+      const opt = document.createElement('option');
+      opt.value = seg.id;
+      opt.dataset.tier = seg.tier;
+      opt.dataset.label = seg.name;
+      opt.dataset.start = seg.start || '';
+      opt.dataset.end = seg.end || '';
+      const windowText = (seg.start && seg.end) ? ` (${seg.start} - ${seg.end})` : '';
+      opt.innerText = `${seg.name}${windowText}`;
+      segmentSelect.appendChild(opt);
+    }
+
+    // Toggle Blank-Slate Builder Drawer
+    btnToggleBuilder.addEventListener('click', () => {
+      const isHidden = segmentBuilder.style.display === 'none' || !segmentBuilder.style.display;
+      segmentBuilder.style.display = isHidden ? 'block' : 'none';
+    });
+
+    btnCancelSegment.addEventListener('click', () => {
+      segmentBuilder.style.display = 'none';
+    });
+
+    // Save New Segment
+    btnSaveSegment.addEventListener('click', () => {
+      const name = document.getElementById('seg-name').value.trim();
+      const tier = document.getElementById('seg-tier').value;
+      const start = document.getElementById('seg-start').value;
+      const end = document.getElementById('seg-end').value;
+
+    if (!name) return showFeedback("Segment name required.", "var(--danger)");
+
+    const newSeg = { id: 'seg_' + Date.now(), name, tier, start, end };
+    savedSegments.push(newSeg);
+    localStorage.setItem('dgf_custom_segments', JSON.stringify(savedSegments));
+
+    addSegmentOptionToDOM(newSeg);
+    segmentSelect.value = newSeg.id;
+    selectedSegmentLabel = newSeg.name;
+    segmentBuilder.style.display = 'none';
+    document.getElementById('seg-name').value = '';
+    updateUI();
+  });
+
+  // Update Action Button Text When Dropdown Changes
+  segmentSelect.addEventListener('change', () => {
+    const selectedOpt = segmentSelect.options[segmentSelect.selectedIndex];
+    selectedSegmentLabel = selectedOpt.dataset.label;
+    updateUI();
+  });
+
+  // Updated Two-Button Visual State Machine
+  function updateUI() {
+    if (isCurrentlyDegraded) {
+      btnStatus.className = "ctrl-btn btn-status-red";
+      btnStatus.innerText = `${activeSegmentLabel} Engaged`;
+      btnAction.innerText = "Engage Standard Mode";
+      telemetryPanel.style.display = 'block';
+    } else {
+      btnStatus.className = "ctrl-btn btn-status-green";
+      btnStatus.innerText = "Standard Mode Engaged";
+      const targetLabel = selectedSegmentLabel === "Standard Mode" ? "Degraded Mode" : selectedSegmentLabel;
+      btnAction.innerText = `Engage ${targetLabel}`;
+      telemetryPanel.style.display = 'none';
+    }
+  }
     // Load saved token
     const savedToken = localStorage.getItem('dgf_child_token');
     if (savedToken) {
