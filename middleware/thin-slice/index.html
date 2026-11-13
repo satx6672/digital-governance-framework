@@ -164,32 +164,12 @@
       transform: translateX(22px);
     }
 
-    /* Card 3: Single Action/Status Toggle Button & Telemetry */
-    .btn-enforce {
-      width: 100%;
-      padding: 16px;
-      border-radius: 8px;
-      font-size: 19px;
-      font-weight: 600;
-      color: #ffffff;
-      border: none;
-      cursor: pointer;
-      margin-bottom: 18px;
-      transition: background-color 0.15s ease;
-    }
-
-    .btn-state-blue {
-      background-color: var(--blue-btn);
-    }
-
-    .btn-state-red {
-      background-color: var(--red-btn);
-    }
-
+    /* Card 3: Live Edge Telemetry (Top) & Single Action/Status Toggle Button (Bottom) */
     .telemetry-box {
       border: 1px solid var(--border-inner);
       border-radius: 8px;
       padding: 14px 16px;
+      margin-bottom: 18px;
     }
 
     .telemetry-title {
@@ -227,6 +207,27 @@
     .val-blue { color: #3b82f6; }
     .val-red { color: #f43f5e; }
     .val-white { color: #f8fafc; }
+
+    .btn-enforce {
+      width: 100%;
+      padding: 16px;
+      border-radius: 8px;
+      font-size: 19px;
+      font-weight: 600;
+      color: #ffffff;
+      border: none;
+      cursor: pointer;
+      margin-bottom: 0;
+      transition: background-color 0.15s ease;
+    }
+
+    .btn-state-blue {
+      background-color: var(--blue-btn);
+    }
+
+    .btn-state-red {
+      background-color: var(--red-btn);
+    }
 
     /* Footer */
     .footer {
@@ -280,10 +281,8 @@
       </div>
     </div>
 
-    <!-- Card 3 (Bottom): In-Place Action Button & Live Edge Telemetry -->
+    <!-- Card 3 (Bottom): Live Edge Telemetry Above, Enforce Button at the Very Bottom -->
     <div class="card">
-      <button id="btn-enforce" class="btn-enforce btn-state-blue">Enforce Operating Hours</button>
-
       <div class="telemetry-box">
         <div class="telemetry-title">LIVE EDGE TELEMETRY</div>
         <div class="telemetry-grid">
@@ -301,6 +300,8 @@
           </div>
         </div>
       </div>
+
+      <button id="btn-enforce" class="btn-enforce btn-state-blue">Enforce Operating Hours</button>
     </div>
 
     <div class="footer">DGF Edge Node v1.0.0 • Local-First Security</div>
