@@ -36,8 +36,11 @@ app = FastAPI(lifespan=lifespan)
 app.include_router(router)
 
 origins = [
-    "chrome-extension://[lmndagmoinleoinkhildkjfgbaddlbdm]",
-
+    "chrome-extension://lmndagmoinleoinkhildkjfgbaddlbdm",
+    "chrome-extension://ihheogkgoigfkjjdldpmpbhdjbngfhpk",
+    "chrome-extension://kegcmpbkmnbnmfolfhedpfbplbdgdfdp",
+    "chrome-extension://cbfmhhcgloaeemleaaljeldfdemkccap",
+    "https://digital-governance-framework.onrender.com"
 ]
 # Pull keys securely from Render Environment Variables
 stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
@@ -61,29 +64,29 @@ async def stripe_webhook(request: Request):
 
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
-        paid_uuid = session.get("client_reference_id") 
+        paid_uuid = session.get("client_reference_id")
+        metadata = session.get("metadata") or {}
+        product_id = metadata.get("product_id", "dgf_middleware")
 
         if paid_uuid:
             try:
                 conn = psycopg2.connect(DATABASE_URL)
                 cur = conn.cursor()
-                
-                # UPSERT: Updates status to 'paid', or inserts it if the row doesn't exist yet
                 cur.execute(
                     """
-                    INSERT INTO middleware_licenses (installation_uuid, status) 
-                    VALUES (%s, 'paid') 
-                    ON CONFLICT (installation_uuid) 
-                    DO UPDATE SET status = 'paid'
+                    INSERT INTO middleware_licenses (installation_uuid, status, product_id)
+                    VALUES (%s, 'paid', %s)
+                    ON CONFLICT (installation_uuid)
+                    DO UPDATE SET status = 'paid', product_id = EXCLUDED.product_id
                     """,
-                    (paid_uuid,)
+                    (paid_uuid, product_id)
                 )
-                
+
                 conn.commit()
                 cur.close()
                 conn.close()
                 print(f"[BILLING] License successfully unlocked for UUID: {paid_uuid}")
-                
+
             except Exception as db_error:
                 print(f"[BILLING] Database error: {db_error}")
                 raise HTTPException(status_code=500, detail="Database update failed")
@@ -92,42 +95,42 @@ async def stripe_webhook(request: Request):
 
 # 2. The License Checker: Adjusted to use a clean connection string copy
 @app.get("/license/{uuid}")
-async def check_license(uuid: str):
+async def check_license(uuid: str, product_id: str = "dgf_middleware"):
     try:
         # Create a clean copy of the database URL specifically for psycopg2 (stripping async prefixes)
         sync_db_url = os.getenv("DATABASE_URL", "").replace("postgresql+asyncpg://", "postgresql://", 1)
-        
+ 
         conn = psycopg2.connect(sync_db_url)
         cur = conn.cursor()
-        
+ 
         cur.execute("SELECT status FROM middleware_licenses WHERE installation_uuid = %s", (uuid,))
         result = cur.fetchone()
-        
+ 
         cur.close()
         conn.close()
 
         if result:
-            return {"status": result[0]} 
+            return {"status": result[0]}
         else:
             try:
                 conn = psycopg2.connect(sync_db_url)
                 cur = conn.cursor()
                 cur.execute(
                     """
-                    INSERT INTO middleware_licenses (installation_uuid, status) 
-                    VALUES (%s, 'free') 
+                    INSERT INTO middleware_licenses (installation_uuid, status)
+                    VALUES (%s, 'free', %s)
                     ON CONFLICT (installation_uuid) DO NOTHING
-                    """, 
-                    (uuid,)
+                    """,
+                    (uuid, product_id)
                 )
                 conn.commit()
                 cur.close()
                 conn.close()
             except Exception:
-                pass 
-            
-            return {"status": "free"} 
-            
+                pass
+ 
+            return {"status": "free"}
+ 
     except Exception as db_error:
         print(f"[BILLING] Database error during license check: {db_error}")
         return {"status": "free"}
@@ -139,10 +142,10 @@ from contextlib import asynccontextmanager
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], 
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -177,15 +180,15 @@ def require_api_key(
     """If DGF_API_KEY is set, require Authorization: Bearer <key>."""
     if not API_KEY:
         return  # auth disabled
-
     if credentials is None or credentials.scheme.lower() != "bearer":
+        print("[SECURITY BLOCK] Missing or invalid Authorization header.")
         raise HTTPException(
             status_code=401,
             detail="Missing or invalid Authorization header. Use: Bearer <api_key>",
             headers={"WWW-Authenticate": "Bearer"},
         )
-
     if credentials.credentials != API_KEY:
+        print("[SECURITY BLOCK] Invalid API key attempt.")
         raise HTTPException(
             status_code=401,
             detail="Invalid API key",
@@ -202,9 +205,9 @@ else:
 
 # 2. Create the Async Engine with the expanded connection pool
 engine = create_async_engine(
-    DATABASE_URL, 
-    pool_size=20, 
-    max_overflow=40, 
+    DATABASE_URL,
+    pool_size=20,
+    max_overflow=40,
     pool_timeout=30,
     echo=False
 )
@@ -222,16 +225,17 @@ async def get_db():
 # 4. Asynchronous Database Initialization for all tables
 async def init_db():
     async with engine.begin() as conn:
-        await conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS continuity_references (
-                continuity_ref TEXT PRIMARY KEY,
-                expires_at TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                actor_type TEXT,
-                degraded INTEGER DEFAULT 0
-            )
-        """))
-        
+	await conn.execute(text("""
+    	    CREATE TABLE IF NOT EXISTS continuity_references (
+        	continuity_ref TEXT PRIMARY KEY,
+        	expires_at TEXT NOT NULL,
+        	created_at TEXT NOT NULL,
+        	actor_type TEXT,
+        	degraded INTEGER DEFAULT 0,
+        	product_id TEXT NOT NULL DEFAULT 'dgf_middleware'
+    	    )
+	"""))
+ 
         await conn.execute(text("""
             CREATE TABLE IF NOT EXISTS srvs (
                 srv_id TEXT PRIMARY KEY,
@@ -246,7 +250,7 @@ async def init_db():
                 created_at TEXT NOT NULL
             )
         """))
-        
+ 
         await conn.execute(text("""
             CREATE TABLE IF NOT EXISTS provisionals (
                 provisional_id TEXT PRIMARY KEY,
@@ -260,7 +264,7 @@ async def init_db():
                 revoked INTEGER DEFAULT 0
             )
         """))
-        
+ 
         await conn.execute(text("""
             CREATE TABLE IF NOT EXISTS acqs (
                 acq_id TEXT PRIMARY KEY,
@@ -274,11 +278,20 @@ async def init_db():
             )
         """))
 
+	await conn.execute(text("""
+    	    CREATE TABLE IF NOT EXISTS middleware_licenses (
+        	installation_uuid TEXT PRIMARY KEY,
+        	status TEXT NOT NULL,
+        	created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        	product_id TEXT NOT NULL DEFAULT 'dgf_middleware'
+    	    )
+	"""))
+
 # Add these index creations right after the acqs table creation
         await conn.execute(text("""
             CREATE INDEX IF NOT EXISTS idx_srvs_passport_ref ON srvs(passport_ref)
         """))
-        
+ 
         await conn.execute(text("""
             CREATE INDEX IF NOT EXISTS idx_provisionals_target_passport ON provisionals(target_passport_ref)
         """))
@@ -299,7 +312,7 @@ async def init_db():
         await conn.execute(text("""
             CREATE INDEX IF NOT EXISTS idx_srvs_passport_ref ON srvs(passport_ref)
         """))
-        
+ 
         await conn.execute(text("""
             CREATE INDEX IF NOT EXISTS idx_provisionals_target_passport ON provisionals(target_passport_ref)
         """))
@@ -353,6 +366,8 @@ class SRVRequest(BaseModel):
 
 class ContinuityRequest(BaseModel):
     verifiablePresentation: Any
+    installation_uuid: Optional[str] = None
+    product_id: Optional[str] = "dgf_middleware"
 
 class ContinuityResponse(BaseModel):
     continuity_ref: str
@@ -361,99 +376,87 @@ class ContinuityResponse(BaseModel):
     actor_type: str
     sponsor_did: Optional[str] = None
 
-@app.get("/debug/acqs")
-async def list_acqs(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(text("""
-        SELECT acq_id, srv_id, target_passport_ref, requesting_platform,
-               query_type, status, created_at, nonce
-        FROM acqs ORDER BY created_at DESC
-    """))
-    rows = result.fetchall()
-    
-    items = [
-        {
-            "acq_id": r[0],
-            "srv_id": r[1],
-            "target_passport_ref": r[2],
-            "requesting_platform": r[3],
-            "query_type": r[4],
-            "status": r[5],
-            "created_at": r[6],
-            "nonce": r[7],
-        }
-        for r in rows
-    ]
-    return {"count": len(items), "items": items}
-
-@app.get("/debug/provisionals")
-async def list_provisionals(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(text("""
-        SELECT provisional_id, target_passport_ref, action_type, expiry,
-               originating_srv_ids, degraded_mode, actor_type, created_at, revoked
-        FROM provisionals
-        ORDER BY created_at DESC
-    """))
-    rows = result.fetchall()
-
-    results = []
-    for row in rows:
-        results.append({
-            "provisional_id": row[0],
-            "target_passport_ref": row[1],
-            "action_type": row[2],
-            "expiry": row[3],
-            "originating_srv_ids": row[4].split(",") if row[4] else [],
-            "degraded_mode": bool(row[5]),
-            "actor_type": row[6],
-            "created_at": row[7],
-            "revoked": bool(row[8])
-        })
-
-    return {
-        "count": len(results),
-        "items": results
-    }
-
-@app.get("/debug/srvs")
-async def list_srvs(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(text("""
-        SELECT srv_id, passport_ref, harm_class, severity, confidence,
-               timestamp, emitter, actor_type, degraded_emission, created_at
-        FROM srvs
-        ORDER BY created_at DESC
-    """))
-    rows = result.fetchall()
-
-    results = []
-    for row in rows:
-        results.append({
-            "srv_id": row[0],
-            "passport_ref": row[1],
-            "harm_class": row[2],
-            "severity": row[3],
-            "confidence": row[4],
-            "timestamp": row[5],
-            "emitter": row[6],
-            "actor_type": row[7],
-            "degraded_emission": bool(row[8]),
-            "created_at": row[9]
-        })
-
-    return {
-        "count": len(results),
-        "items": results
-    }
-
 if DEBUG_MODE:
+    @app.get("/debug/acqs")
+    async def list_acqs(_: None = Depends(require_api_key), db: AsyncSession = Depends(get_db)):
+        result = await db.execute(text("""
+            SELECT acq_id, srv_id, target_passport_ref, requesting_platform,
+                   query_type, status, created_at, nonce
+            FROM acqs ORDER BY created_at DESC
+        """))
+        rows = result.fetchall()
+        items = [
+            {
+                "acq_id": r[0],
+                "srv_id": r[1],
+                "target_passport_ref": r[2],
+                "requesting_platform": r[3],
+                "query_type": r[4],
+                "status": r[5],
+                "created_at": r[6],
+                "nonce": r[7],
+            }
+            for r in rows
+        ]
+        return {"count": len(items), "items": items}
+
+    @app.get("/debug/provisionals")
+    async def list_provisionals(_: None = Depends(require_api_key), db: AsyncSession = Depends(get_db)):
+        result = await db.execute(text("""
+            SELECT provisional_id, target_passport_ref, action_type, expiry,
+                   originating_srv_ids, degraded_mode, actor_type, created_at, revoked
+            FROM provisionals
+            ORDER BY created_at DESC
+        """))
+        rows = result.fetchall()
+        results = []
+        for row in rows:
+            results.append({
+                "provisional_id": row[0],
+                "target_passport_ref": row[1],
+                "action_type": row[2],
+                "expiry": row[3],
+                "originating_srv_ids": row[4].split(",") if row[4] else [],
+                "degraded_mode": bool(row[5]),
+                "actor_type": row[6],
+                "created_at": row[7],
+                "revoked": bool(row[8])
+            })
+        return {"count": len(results), "items": results}
+
+    @app.get("/debug/srvs")
+    async def list_srvs(_: None = Depends(require_api_key), db: AsyncSession = Depends(get_db)):
+        result = await db.execute(text("""
+            SELECT srv_id, passport_ref, harm_class, severity, confidence,
+                   timestamp, emitter, actor_type, degraded_emission, created_at
+            FROM srvs
+            ORDER BY created_at DESC
+        """))
+        rows = result.fetchall()
+        results = []
+        for row in rows:
+            results.append({
+                "srv_id": row[0],
+                "passport_ref": row[1],
+                "harm_class": row[2],
+                "severity": row[3],
+                "confidence": row[4],
+                "timestamp": row[5],
+                "emitter": row[6],
+                "actor_type": row[7],
+                "degraded_emission": bool(row[8]),
+                "created_at": row[9]
+            })
+        return {"count": len(results), "items": results}
+
     @app.get("/debug/continuity")
-    async def list_continuity_references(db: AsyncSession = Depends(get_db)):
+    async def list_continuity_references(_: None = Depends(require_api_key), db: AsyncSession = Depends(get_db)):
         result = await db.execute(text("""
             SELECT continuity_ref, expires_at, created_at, actor_type, degraded
             FROM continuity_references
             ORDER BY created_at DESC
         """))
         rows = result.fetchall()
-
         results = []
         for row in rows:
             results.append({
@@ -463,16 +466,12 @@ if DEBUG_MODE:
                 "actor_type": row[3],
                 "degraded": bool(row[4])
             })
+        return {"count": len(results), "items": results}
 
-        return {
-            "count": len(results),
-            "items": results
-        }
-
-@app.get("/debug/init")
-async def manual_init():
-    await init_db()
-    return {"message": "Database tables initialized"}
+    @app.get("/debug/init")
+    async def manual_init(_: None = Depends(require_api_key)):
+        await init_db()
+        return {"message": "Database tables initialized"}
 
 @app.get("/")
 def read_root():
@@ -486,7 +485,7 @@ async def parent_dashboard():
     # Dynamically get the directory where main.py is currently running
     current_dir = os.path.dirname(os.path.abspath(__file__))
     file_path = os.path.join(current_dir, "index.html")
-    
+ 
     try:
         with open(file_path, "r", encoding="utf-8") as file:
             return file.read()
@@ -518,6 +517,18 @@ async def establish_continuity(
     if request.verifiablePresentation is None:
         raise HTTPException(status_code=400, detail="verifiablePresentation is required")
 
+    if not request.installation_uuid:
+        print("[SECURITY BLOCK] Scraped key rejected — missing installation_uuid.")
+        raise HTTPException(status_code=403, detail="Registered installation_uuid is required")
+
+    lic_check = await db.execute(
+        text("SELECT status FROM middleware_licenses WHERE installation_uuid = :uuid"),
+        {"uuid": request.installation_uuid}
+    )
+    if lic_check.fetchone() is None:
+        print(f"[SECURITY BLOCK] Scraped key rejected — unregistered UUID: {request.installation_uuid}")
+        raise HTTPException(status_code=403, detail="Unregistered installation_uuid")
+
     continuity_ref = f"cont_{uuid.uuid4().hex[:16]}"
     now = datetime.now(timezone.utc)
     expires_at = now + timedelta(hours=4)
@@ -525,16 +536,18 @@ async def establish_continuity(
     # Store in database asynchronously
     await db.execute(
         text("""
-        INSERT INTO continuity_references
-        (continuity_ref, expires_at, created_at, actor_type, degraded)
-        VALUES (:ref, :exp, :creat, :actor, :deg)
+            INSERT INTO continuity_references (
+                continuity_ref, expires_at, created_at, actor_type, degraded, product_id
+            )
+            VALUES (:ref, :exp, :creat, :actor, :deg, :prod_id)
         """),
         {
             "ref": continuity_ref,
             "exp": expires_at.isoformat().replace("+00:00", "Z"),
             "creat": now.isoformat().replace("+00:00", "Z"),
             "actor": "human",
-            "deg": 0
+            "deg": 0,
+            "prod_id": request.product_id or "dgf_middleware"
         }
     )
     await db.commit()
@@ -799,7 +812,7 @@ async def issue_acq(
     # Thin policy: if srv_id provided, require it to exist
     if request.srv_id:
         srv_result = await db.execute(
-            text("SELECT srv_id FROM srvs WHERE srv_id = :srv_id"), 
+            text("SELECT srv_id FROM srvs WHERE srv_id = :srv_id"),
             {"srv_id": request.srv_id}
         )
         if srv_result.fetchone() is None:
@@ -842,4 +855,3 @@ async def issue_acq(
         "timestamp": created_at,
         "error_detail": None,
     }
-
