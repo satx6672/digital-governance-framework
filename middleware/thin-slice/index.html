@@ -81,6 +81,91 @@
       outline: none;
       border-color: var(--accent-blue);
     }
+    
+    /* Segment Selector Row */
+    .segment-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    
+    .segment-select {
+      flex: 1;
+      padding: 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-size: 13px;
+      font-weight: 600;
+      outline: none;  
+    }
+    
+    .segment-select:focus {
+      border-color: var(--accent-blue);
+    }
+    
+    .btn-new-segment {
+      padding: 0 14px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      background-color: transparent;
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+    }
+  
+    .btn-new-segment:hover {
+      color: var(--text-main);
+      border-color: var(--text-main);
+    }
+  
+    /* Blank-Slate Segment Builder Drawer */
+    .segment-builder {
+      display: none;
+      background-color: var(--bg-dark);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 14px;
+      margin-bottom: 16px;
+      text-align: left;
+    }
+  
+    .builder-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 4px;
+      display: block;
+    }
+  
+    .builder-input, .builder-tier {
+      width: 100%;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-panel);
+      color: var(--text-main);
+      font-size: 13px;
+      margin-bottom: 12px;
+      outline: none;
+    }
+  
+    .time-window-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+  
+    .builder-actions {
+      display: flex;
+      gap: 8px;
+    }
 
     /* Perfect Proportional Symmetry for Buttons */
     .ctrl-btn {
