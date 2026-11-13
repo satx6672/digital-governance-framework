@@ -376,7 +376,7 @@ async def init_db():
         actor_type: str
         sponsor_did: Optional[str] = None
 
-    if DEBUG_MODE:
+if DEBUG_MODE:
     @app.get("/debug/acqs")
     async def list_acqs(_: None = Depends(require_api_key), db: AsyncSession = Depends(get_db)):
         result = await db.execute(text("""
