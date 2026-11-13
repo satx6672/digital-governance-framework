@@ -225,17 +225,17 @@ async def get_db():
 # 4. Asynchronous Database Initialization for all tables
 async def init_db():
     async with engine.begin() as conn:
-	await conn.execute(text("""
-    	    CREATE TABLE IF NOT EXISTS continuity_references (
-        	continuity_ref TEXT PRIMARY KEY,
-        	expires_at TEXT NOT NULL,
-        	created_at TEXT NOT NULL,
-        	actor_type TEXT,
-        	degraded INTEGER DEFAULT 0,
-        	product_id TEXT NOT NULL DEFAULT 'dgf_middleware'
-    	    )
-	"""))
- 
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS continuity_references (
+                continuity_ref TEXT PRIMARY KEY,
+                expires_at TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                actor_type TEXT,
+                degraded INTEGER DEFAULT 0,
+                product_id TEXT NOT NULL DEFAULT 'dgf_middleware'
+            )
+        """))
+
         await conn.execute(text("""
             CREATE TABLE IF NOT EXISTS srvs (
                 srv_id TEXT PRIMARY KEY,
@@ -250,7 +250,7 @@ async def init_db():
                 created_at TEXT NOT NULL
             )
         """))
- 
+
         await conn.execute(text("""
             CREATE TABLE IF NOT EXISTS provisionals (
                 provisional_id TEXT PRIMARY KEY,
@@ -264,7 +264,7 @@ async def init_db():
                 revoked INTEGER DEFAULT 0
             )
         """))
- 
+
         await conn.execute(text("""
             CREATE TABLE IF NOT EXISTS acqs (
                 acq_id TEXT PRIMARY KEY,
@@ -278,11 +278,11 @@ async def init_db():
             )
         """))
 
-	await conn.execute(text("""
-    	    CREATE TABLE IF NOT EXISTS middleware_licenses (
-        	installation_uuid TEXT PRIMARY KEY,
-        	status TEXT NOT NULL,
-        	created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS middleware_licenses (
+                installation_uuid TEXT PRIMARY KEY,
+                status TEXT NOT NULL,
+                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
                 product_id TEXT NOT NULL DEFAULT 'dgf_middleware'
             )
         """))
@@ -291,7 +291,7 @@ async def init_db():
         await conn.execute(text("""
             CREATE INDEX IF NOT EXISTS idx_srvs_passport_ref ON srvs(passport_ref)
         """))
- 
+
         await conn.execute(text("""
             CREATE INDEX IF NOT EXISTS idx_provisionals_target_passport ON provisionals(target_passport_ref)
         """))
