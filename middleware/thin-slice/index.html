@@ -98,71 +98,7 @@
       color: var(--text-main);
     }
 
-    /* Card 2: Single Action/Status Toggle Button & Telemetry */
-    .btn-enforce {
-      width: 100%;
-      padding: 16px;
-      border-radius: 8px;
-      font-size: 19px;
-      font-weight: 600;
-      color: #ffffff;
-      border: none;
-      cursor: pointer;
-      margin-bottom: 18px;
-      transition: background-color 0.15s ease;
-    }
-
-    .btn-state-blue {
-      background-color: var(--blue-btn);
-    }
-
-    .btn-state-red {
-      background-color: var(--red-btn);
-    }
-
-    .telemetry-box {
-      border: 1px solid var(--border-inner);
-      border-radius: 8px;
-      padding: 14px 16px;
-    }
-
-    .telemetry-title {
-      font-size: 12px;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      margin-bottom: 12px;
-    }
-
-    .telemetry-grid {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-    }
-
-    .stat-col {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .stat-label {
-      font-size: 11px;
-      color: var(--text-muted);
-      text-transform: uppercase;
-    }
-
-    .stat-val {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      font-size: 14px;
-      font-weight: 600;
-    }
-
-    .val-blue { color: #3b82f6; }
-    .val-red { color: #f43f5e; }
-    .val-white { color: #f8fafc; }
-
-    /* Card 3: Mode Switches */
+    /* Card 2: Mode Switches */
     .modes-card {
       padding: 8px 20px;
     }
@@ -227,6 +163,70 @@
     .switch input:checked + .slider:before {
       transform: translateX(22px);
     }
+ 
+    /* Card 3: Single Action/Status Toggle Button & Telemetry */
+    .btn-enforce {
+      width: 100%;
+      padding: 16px;
+      border-radius: 8px;
+      font-size: 19px;
+      font-weight: 600;
+      color: #ffffff;
+      border: none;
+      cursor: pointer;
+      margin-bottom: 18px;
+      transition: background-color 0.15s ease;
+    }
+
+    .btn-state-blue {
+      background-color: var(--blue-btn);
+    }
+
+    .btn-state-red {
+      background-color: var(--red-btn);
+    }
+
+    .telemetry-box {
+      border: 1px solid var(--border-inner);
+      border-radius: 8px;
+      padding: 14px 16px;
+    }
+
+    .telemetry-title {
+      font-size: 12px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 12px;
+    }
+
+    .telemetry-grid {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .stat-col {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .stat-val {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .val-blue { color: #3b82f6; }
+    .val-red { color: #f43f5e; }
+    .val-white { color: #f8fafc; }
 
     /* Footer */
     .footer {
@@ -255,7 +255,30 @@
       <input type="text" id="device-token" class="token-input" placeholder="cont_xxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false">
     </div>
 
-    <!-- Card 2: Mode Switches -->
+    <!-- Card 2: In-Place Action Button & Live Edge Telemetry -->
+    <div class="card">
+      <button id="btn-enforce" class="btn-enforce btn-state-blue">Enforce Operating Hours</button>
+
+      <div class="telemetry-box">
+        <div class="telemetry-title">LIVE EDGE TELEMETRY</div>
+        <div class="telemetry-grid">
+          <div class="stat-col">
+            <div class="stat-label">PAYLOADS ISOLATED</div>
+            <div id="metric-isolated" class="stat-val val-blue">0002</div>
+          </div>
+          <div class="stat-col">
+            <div class="stat-label">TRACKERS BLOCKED</div>
+            <div id="metric-blocked" class="stat-val val-red">0002</div>
+          </div>
+          <div class="stat-col">
+            <div class="stat-label">DATA SAVED</div>
+            <div id="metric-data" class="stat-val val-white">0.03 MB</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 3: Mode Switches -->
     <div class="card modes-card">
       <div class="mode-row">
         <span class="mode-label">Standard Mode</span>
@@ -277,29 +300,6 @@
           <input type="checkbox" name="operating-mode" value="custom">
           <span class="slider"></span>
         </label>
-      </div>
-    </div>
-    
-    <!-- Card 3: In-Place Action Button & Live Edge Telemetry -->
-    <div class="card">
-      <button id="btn-enforce" class="btn-enforce btn-state-blue">Enforce Operating Hours</button>
-
-      <div class="telemetry-box">
-        <div class="telemetry-title">LIVE EDGE TELEMETRY</div>
-        <div class="telemetry-grid">
-          <div class="stat-col">
-            <div class="stat-label">PAYLOADS ISOLATED</div>
-            <div id="metric-isolated" class="stat-val val-blue">0002</div>
-          </div>
-          <div class="stat-col">
-            <div class="stat-label">TRACKERS BLOCKED</div>
-            <div id="metric-blocked" class="stat-val val-red">0002</div>
-          </div>
-          <div class="stat-col">
-            <div class="stat-label">DATA SAVED</div>
-            <div id="metric-data" class="stat-val val-white">0.03 MB</div>
-          </div>
-        </div>
       </div>
     </div>
 
