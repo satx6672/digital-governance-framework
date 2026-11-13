@@ -111,6 +111,10 @@
       border-bottom: 1px solid var(--border-inner);
     }
 
+    .mode-row:last-child {
+      border-bottom: none;
+    }
+
     .mode-label {
       font-size: 15px;
       font-weight: 600;
@@ -159,7 +163,7 @@
     .switch input:checked + .slider:before {
       transform: translateX(22px);
     }
- 
+
     /* Card 3: Single Action/Status Toggle Button & Telemetry */
     .btn-enforce {
       width: 100%;
@@ -202,10 +206,6 @@
       align-items: flex-start;
     }
 
-    .mode-row:last-child {
-      border-bottom: none;
-    }
-    
     .stat-col {
       display: flex;
       flex-direction: column;
@@ -249,36 +249,13 @@
     </div>
     <div class="header-sub">Browser Control Unit</div>
 
-    <!-- Card 1: Device Token -->
+    <!-- Card 1 (Top): Device Token -->
     <div class="card">
       <div class="field-label">DEVICE TOKEN</div>
       <input type="text" id="device-token" class="token-input" placeholder="cont_xxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false">
     </div>
 
-    <!-- Card 2: In-Place Action Button & Live Edge Telemetry -->
-    <div class="card">
-      <button id="btn-enforce" class="btn-enforce btn-state-blue">Enforce Operating Hours</button>
-
-      <div class="telemetry-box">
-        <div class="telemetry-title">LIVE EDGE TELEMETRY</div>
-        <div class="telemetry-grid">
-          <div class="stat-col">
-            <div class="stat-label">PAYLOADS ISOLATED</div>
-            <div id="metric-isolated" class="stat-val val-blue">0002</div>
-          </div>
-          <div class="stat-col">
-            <div class="stat-label">TRACKERS BLOCKED</div>
-            <div id="metric-blocked" class="stat-val val-red">0002</div>
-          </div>
-          <div class="stat-col">
-            <div class="stat-label">DATA SAVED</div>
-            <div id="metric-data" class="stat-val val-white">0.03 MB</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Card 3: Mode Switches -->
+    <!-- Card 2 (Middle): Mode Switches -->
     <div class="card modes-card">
       <div class="mode-row">
         <span class="mode-label">Standard Mode</span>
@@ -303,25 +280,37 @@
       </div>
     </div>
 
+    <!-- Card 3 (Bottom): In-Place Action Button & Live Edge Telemetry -->
+    <div class="card">
+      <button id="btn-enforce" class="btn-enforce btn-state-blue">Enforce Operating Hours</button>
+
+      <div class="telemetry-box">
+        <div class="telemetry-title">LIVE EDGE TELEMETRY</div>
+        <div class="telemetry-grid">
+          <div class="stat-col">
+            <div class="stat-label">PAYLOADS ISOLATED</div>
+            <div id="metric-isolated" class="stat-val val-blue">0002</div>
+          </div>
+          <div class="stat-col">
+            <div class="stat-label">TRACKERS BLOCKED</div>
+            <div id="metric-blocked" class="stat-val val-red">0002</div>
+          </div>
+          <div class="stat-col">
+            <div class="stat-label">DATA SAVED</div>
+            <div id="metric-data" class="stat-val val-white">0.03 MB</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="footer">DGF Edge Node v1.0.0 • Local-First Security</div>
   </div>
 
   <script>
-    const modeCheckboxes = document.querySelectorAll('input[name="operating-mode"]');
     const btnEnforce = document.getElementById('btn-enforce');
+    const modeCheckboxes = document.querySelectorAll('input[name="operating-mode"]');
     let isEnforced = false;
 
-    // Exclusive toggle behavior for the 3 mode switches
-    modeCheckboxes.forEach(box => {
-      box.addEventListener('change', () => {
-        if (box.checked) {
-          modeCheckboxes.forEach(other => {
-            if (other !== box) other.checked = false;
-          });
-        }
-      });
-    });
-    
     // Single button toggling in-place between Blue ("Enforce Operating Hours") and Red ("Operating Hours Enforced")
     btnEnforce.addEventListener('click', () => {
       isEnforced = !isEnforced;
@@ -332,6 +321,17 @@
         btnEnforce.className = 'btn-enforce btn-state-blue';
         btnEnforce.innerText = 'Enforce Operating Hours';
       }
+    });
+
+    // Exclusive toggle behavior for the 3 mode switches
+    modeCheckboxes.forEach(box => {
+      box.addEventListener('change', () => {
+        if (box.checked) {
+          modeCheckboxes.forEach(other => {
+            if (other !== box) other.checked = false;
+          });
+        }
+      });
     });
   </script>
 </body>
