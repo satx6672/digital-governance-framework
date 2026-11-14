@@ -674,7 +674,7 @@
       modeCheckboxes.forEach(box => {
         box.checked = (box.value === modeValue);
       });
-      customDrawer.style.display = (modeValue === 'custom') ? 'block' : 'none';
+      customDrawer.style.display = (modeValue === 'custom' && !isEnforced) ? 'block' : 'none';
     }
 
     function isValidToken(token) {
@@ -1016,6 +1016,7 @@
           sessionOtp = null;
           sessionExpiresAt = null;
           setCustomInputsDisabled(true);
+          setCheckedMode('custom'); // Collapses the drawer now that isEnforced is true
           persistSessionState();
           startTelemetryLoop();
           return;
