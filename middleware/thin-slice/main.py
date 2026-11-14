@@ -230,9 +230,18 @@ async def init_db():
                 created_at TEXT NOT NULL,
                 actor_type TEXT,
                 degraded INTEGER DEFAULT 0,
-                product_id TEXT NOT NULL DEFAULT 'dgf_middleware'
+                product_id TEXT NOT NULL DEFAULT 'dgf_middleware',
+                operating_mode TEXT DEFAULT 'none'
             )
         """))
+
+        try:
+            await conn.execute(text("""
+                ALTER TABLE continuity_references
+                ADD COLUMN IF NOT EXISTS operating_mode TEXT DEFAULT 'none'
+            """))
+        except Exception:
+            pass
 
         await conn.execute(text("""
             CREATE TABLE IF NOT EXISTS srvs (
@@ -300,7 +309,8 @@ async def on_startup():
 
 class ToggleStateRequest(BaseModel):
     continuity_ref: str
-    is_degraded: bool
+    is_degraded: Optional[bool] = False
+    operating_mode: Optional[str] = None
 
 class ACQRequest(BaseModel):
     srv_id: Optional[str] = None
@@ -428,7 +438,7 @@ if DEBUG_MODE:
     @app.get("/debug/continuity")
     async def list_continuity_references(_: None = Depends(require_api_key), db: AsyncSession = Depends(get_db)):
         result = await db.execute(text("""
-            SELECT continuity_ref, expires_at, created_at, actor_type, degraded
+            SELECT continuity_ref, expires_at, created_at, actor_type, degraded, operating_mode
             FROM continuity_references
             ORDER BY created_at DESC
         """))
@@ -440,7 +450,8 @@ if DEBUG_MODE:
                 "expires_at": row[1],
                 "created_at": row[2],
                 "actor_type": row[3],
-                "degraded": bool(row[4])
+                "degraded": bool(row[4]),
+                "operating_mode": row[5] or "none"
             })
         return {"count": len(results), "items": results}
 
@@ -513,9 +524,9 @@ async def establish_continuity(
     await db.execute(
         text("""
             INSERT INTO continuity_references (
-                continuity_ref, expires_at, created_at, actor_type, degraded, product_id
+                continuity_ref, expires_at, created_at, actor_type, degraded, product_id, operating_mode
             )
-            VALUES (:ref, :exp, :creat, :actor, :deg, :prod_id)
+            VALUES (:ref, :exp, :creat, :actor, :deg, :prod_id, :mode)
         """),
         {
             "ref": continuity_ref,
@@ -523,7 +534,8 @@ async def establish_continuity(
             "creat": now.isoformat().replace("+00:00", "Z"),
             "actor": "human",
             "deg": 0,
-            "prod_id": request.product_id or "dgf_middleware"
+            "prod_id": request.product_id or "dgf_middleware",
+            "mode": "none"
         }
     )
     await db.commit()
@@ -707,10 +719,10 @@ async def check_emission_state(
     _: None = Depends(require_api_key),
     db: AsyncSession = Depends(get_db)
 ):
-    # The extension polls this endpoint to get the current degraded state
+    # The extension polls this endpoint to get the current operating mode and degraded state
     result = await db.execute(
         text("""
-        SELECT degraded FROM continuity_references
+        SELECT degraded, operating_mode, expires_at FROM continuity_references
         WHERE continuity_ref = :ref
         """),
         {"ref": continuity_ref}
@@ -720,10 +732,11 @@ async def check_emission_state(
     if row is None:
         raise HTTPException(status_code=404, detail="Continuity Reference not found")
 
-    # Return boolean value for the extension to parse
     return {
         "continuity_ref": continuity_ref,
-        "is_degraded": bool(row[0])
+        "is_degraded": bool(row[0]),
+        "operating_mode": row[1] or "none",
+        "expires_at": row[2]
     }
 
 @app.post("/toggle-state")
@@ -734,22 +747,43 @@ async def toggle_emission_state(
 ):
     # 1. Verify the session token exists
     result = await db.execute(
-        text("SELECT continuity_ref FROM continuity_references WHERE continuity_ref = :ref"),
+        text("""
+        SELECT continuity_ref, expires_at FROM continuity_references
+        WHERE continuity_ref = :ref
+        """),
         {"ref": request.continuity_ref}
     )
-    if result.fetchone() is None:
+    row = result.fetchone()
+    if row is None:
         raise HTTPException(status_code=404, detail="Continuity Reference not found")
 
-    # 2. Update the degraded state in PostgreSQL
-    degraded_int = 1 if request.is_degraded else 0
+    # Determine the requested operating mode ('standard', 'degraded', 'custom', or 'none')
+    if request.operating_mode is not None:
+        mode = request.operating_mode.lower()
+    else:
+        mode = "degraded" if request.is_degraded else "none"
+
+    if mode not in ("standard", "degraded", "custom", "none"):
+        raise HTTPException(status_code=400, detail="Invalid operating_mode")
+
+    # When arming or switching an active mode, ensure the 4-hour token has not expired
+    if mode != "none":
+        expires_at = datetime.fromisoformat(row[1].replace("Z", "+00:00"))
+        now = datetime.now(timezone.utc)
+        if now > expires_at:
+            raise HTTPException(status_code=410, detail="Continuity Reference has expired")
+
+    # 2. Update the operating_mode and degraded state in PostgreSQL
+    degraded_int = 0 if mode == "none" else 1
     await db.execute(
         text("""
         UPDATE continuity_references
-        SET degraded = :deg
+        SET degraded = :deg, operating_mode = :mode
         WHERE continuity_ref = :ref
         """),
         {
             "deg": degraded_int,
+            "mode": mode,
             "ref": request.continuity_ref
         }
     )
@@ -758,7 +792,9 @@ async def toggle_emission_state(
     return {
         "status": "success",
         "continuity_ref": request.continuity_ref,
-        "new_state": "degraded" if request.is_degraded else "standard"
+        "is_degraded": bool(degraded_int),
+        "operating_mode": mode,
+        "new_state": mode
     }
 
 @app.post("/acq", response_model=ACQResponse)
