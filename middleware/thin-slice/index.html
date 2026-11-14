@@ -98,6 +98,18 @@
       color: var(--text-main);
     }
 
+    /* Status / Feedback Banner */
+    .feedback-msg {
+      width: 100%;
+      font-size: 12px;
+      font-weight: 600;
+      text-align: center;
+      margin-top: 10px;
+      min-height: 16px;
+      color: var(--red-btn);
+      display: none;
+    }
+
     /* Card 2: Mode Switches */
     .modes-card {
       padding: 8px 20px;
@@ -236,6 +248,99 @@
       margin-top: 4px;
       text-align: center;
     }
+
+    /* Modals (OTP Generation, OTP Override Prompt, & Session Expired Notice) */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(11, 15, 25, 0.85);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+    }
+
+    .modal-card {
+      width: 100%;
+      max-width: 360px;
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 22px 20px;
+      text-align: center;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+    }
+
+    .modal-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 10px;
+    }
+
+    .modal-text {
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .otp-display-box {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      color: #22c55e;
+      background-color: var(--bg-input);
+      border: 1px solid var(--border-inner);
+      border-radius: 8px;
+      padding: 14px;
+      margin-bottom: 18px;
+    }
+
+    .otp-input-field {
+      width: 100%;
+      padding: 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border-inner);
+      background-color: var(--bg-input);
+      color: var(--text-main);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 18px;
+      text-align: center;
+      letter-spacing: 0.12em;
+      outline: none;
+      margin-bottom: 14px;
+    }
+
+    .otp-input-field:focus {
+      border-color: var(--blue-btn);
+    }
+
+    .modal-btn {
+      width: 100%;
+      padding: 13px;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      color: #ffffff;
+      background-color: var(--blue-btn);
+      border: none;
+      cursor: pointer;
+      margin-bottom: 8px;
+    }
+
+    .modal-btn-cancel {
+      width: 100%;
+      padding: 10px;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 13px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -254,6 +359,7 @@
     <div class="card">
       <div class="field-label">DEVICE TOKEN</div>
       <input type="text" id="device-token" class="token-input" placeholder="cont_xxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false">
+      <div id="feedback-banner" class="feedback-msg"></div>
     </div>
 
     <!-- Card 2 (Middle): Mode Switches -->
@@ -288,15 +394,15 @@
         <div class="telemetry-grid">
           <div class="stat-col">
             <div class="stat-label">PAYLOADS ISOLATED</div>
-            <div id="metric-isolated" class="stat-val val-blue">0002</div>
+            <div id="metric-isolated" class="stat-val val-blue">0000</div>
           </div>
           <div class="stat-col">
             <div class="stat-label">TRACKERS BLOCKED</div>
-            <div id="metric-blocked" class="stat-val val-red">0002</div>
+            <div id="metric-blocked" class="stat-val val-red">0000</div>
           </div>
           <div class="stat-col">
             <div class="stat-label">DATA SAVED</div>
-            <div id="metric-data" class="stat-val val-white">0.03 MB</div>
+            <div id="metric-data" class="stat-val val-white">0.00 MB</div>
           </div>
         </div>
       </div>
@@ -307,32 +413,292 @@
     <div class="footer">DGF Edge Node v1.0.0 • Local-First Security</div>
   </div>
 
+  <!-- Modal 1: Generated OTP Display (4-Hour Session) -->
+  <div id="modal-otp-created" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-title">4-Hour Session Locked</div>
+      <div class="modal-text">
+        Your operating hours are now enforced. Save this One-Time Passcode (OTP)—it is valid for 4 hours and is required to switch to a less restrictive mode or turn off operating hours early.
+      </div>
+      <div id="otp-generated-code" class="otp-display-box">------</div>
+      <button id="btn-close-otp-created" class="modal-btn">I Have Saved This OTP</button>
+    </div>
+  </div>
+
+  <!-- Modal 2: OTP Prompt for Downgrade / Early Shutoff -->
+  <div id="modal-otp-verify" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-title">OTP Required</div>
+      <div class="modal-text">
+        An active 4-hour session is in force. Enter your 6-digit One-Time Passcode to authorize this change.
+      </div>
+      <input type="text" id="input-otp-verify" class="otp-input-field" placeholder="000000" maxlength="6" autocomplete="off">
+      <div id="otp-error-msg" class="feedback-msg" style="margin-bottom: 10px;">Invalid OTP.</div>
+      <button id="btn-submit-otp" class="modal-btn">Verify & Execute</button>
+      <button id="btn-cancel-otp" class="modal-btn-cancel">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Modal 3: Expired 4-Hour Session Notice -->
+  <div id="modal-session-expired" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-title">4-Hour Session Expired</div>
+      <div class="modal-text">
+        Although your locked 4-hour session expired, your operating hours setting remained in place—unlocked—so you could turn it off without needing the OTP.<br><br>
+        To start a new locked 4-hour session, generate a new reference token from the extension popup, select your mode, and click Enforce Operating Hours.
+      </div>
+      <button id="btn-close-expired" class="modal-btn">Acknowledge</button>
+    </div>
+  </div>
+
   <script>
+    const inputToken = document.getElementById('device-token');
+    const feedbackBanner = document.getElementById('feedback-banner');
     const btnEnforce = document.getElementById('btn-enforce');
     const modeCheckboxes = document.querySelectorAll('input[name="operating-mode"]');
-    let isEnforced = false;
 
-    // Single button toggling in-place between Blue ("Enforce Operating Hours") and Red ("Operating Hours Enforced")
+    // Modals
+    const modalOtpCreated = document.getElementById('modal-otp-created');
+    const otpGeneratedCode = document.getElementById('otp-generated-code');
+    const btnCloseOtpCreated = document.getElementById('btn-close-otp-created');
+
+    const modalOtpVerify = document.getElementById('modal-otp-verify');
+    const inputOtpVerify = document.getElementById('input-otp-verify');
+    const otpErrorMsg = document.getElementById('otp-error-msg');
+    const btnSubmitOtp = document.getElementById('btn-submit-otp');
+    const btnCancelOtp = document.getElementById('btn-cancel-otp');
+
+    const modalSessionExpired = document.getElementById('modal-session-expired');
+    const btnCloseExpired = document.getElementById('btn-close-expired');
+
+    // Session State
+    const FOUR_HOURS_MS = 4 * 60 * 60 * 1000;
+    const MODE_RANK = { degraded: 1, standard: 2 };
+
+    let isEnforced = false;
+    let activeMode = null;       // 'standard' | 'degraded' | 'custom' | null
+    let originatedMode = null;   // 'standard' | 'degraded' | null (for OTP sessions)
+    let sessionOtp = null;       // 6-digit string for Standard/Degraded sessions
+    let sessionExpiresAt = null; // Timestamp (ms) when 4-hour lock expires
+    let pendingAuthorizedAction = null;
+
+    function showFeedback(msg) {
+      feedbackBanner.innerText = msg;
+      feedbackBanner.style.display = 'block';
+      setTimeout(() => {
+        feedbackBanner.style.display = 'none';
+      }, 3500);
+    }
+
+    function getCheckedMode() {
+      for (const box of modeCheckboxes) {
+        if (box.checked) return box.value;
+      }
+      return null;
+    }
+
+    function setCheckedMode(modeValue) {
+      modeCheckboxes.forEach(box => {
+        box.checked = (box.value === modeValue);
+      });
+    }
+
+    function isValidToken(token) {
+      return token && token.startsWith('cont_') && token.length > 5;
+    }
+
+    function generateSixDigitOtp() {
+      return Math.floor(100000 + Math.random() * 900000).toString();
+    }
+
+    // Completely reset BCU to disarmed state and require a fresh token for the next session
+    function resetToDisarmedState() {
+      isEnforced = false;
+      activeMode = null;
+      originatedMode = null;
+      sessionOtp = null;
+      sessionExpiresAt = null;
+      pendingAuthorizedAction = null;
+
+      setCheckedMode(null);
+      inputToken.value = '';
+      inputToken.readOnly = false;
+
+      btnEnforce.className = 'btn-enforce btn-state-blue';
+      btnEnforce.innerText = 'Enforce Operating Hours';
+    }
+
+    // Handle Mode Switch Toggles
+    modeCheckboxes.forEach(box => {
+      box.addEventListener('change', () => {
+        // 1. Not enforced yet: simply stage mutually exclusive mode selection
+        if (!isEnforced) {
+          if (box.checked) {
+            modeCheckboxes.forEach(other => {
+              if (other !== box) other.checked = false;
+            });
+          }
+          return;
+        }
+
+        // 2. Currently in Custom Mode (No OTP involved)
+        if (activeMode === 'custom') {
+          if (box.value === 'custom' && !box.checked) {
+            // Directly toggling OFF Custom Mode shuts down enforcement with no OTP
+            resetToDisarmedState();
+            return;
+          }
+          // If trying to flip Standard or Degraded ON directly from active Custom Mode,
+          // revert toggle and inform user to turn off Custom Mode and use a new token
+          setCheckedMode('custom');
+          showFeedback('Turn off Custom Mode and enter a new token to start Standard or Degraded Mode.');
+          return;
+        }
+
+        // 3. Currently in a Standard or Degraded Session: check if 4-hour window expired
+        if (sessionExpiresAt && Date.now() >= sessionExpiresAt) {
+          resetToDisarmedState();
+          modalSessionExpired.style.display = 'flex';
+          return;
+        }
+
+        // Determine what the user is attempting to do with the toggles
+        const clickedMode = box.value;
+        const isTurningOffActive = (clickedMode === activeMode && !box.checked);
+
+        if (isTurningOffActive) {
+          // Revert visual state immediately until OTP is verified
+          setCheckedMode(activeMode);
+          promptForOtp(() => {
+            resetToDisarmedState();
+          });
+          return;
+        }
+
+        // User is toggling ON a different mode while in an active 4-hour OTP session
+        if (box.checked) {
+          // Attempting to switch into Custom Mode mid-OTP-session requires OTP
+          if (clickedMode === 'custom') {
+            setCheckedMode(activeMode);
+            promptForOtp(() => {
+              resetToDisarmedState();
+            });
+            return;
+          }
+
+          const targetRank = MODE_RANK[clickedMode];
+          const originatedRank = MODE_RANK[originatedMode];
+
+          // Free escalation (Degraded -> Standard) OR free return to the Originated Mode
+          if (targetRank >= originatedRank) {
+            activeMode = clickedMode;
+            setCheckedMode(activeMode);
+          } else {
+            // Attempting to drop below the Originated Mode (Standard -> Degraded) requires OTP
+            setCheckedMode(activeMode);
+            promptForOtp(() => {
+              activeMode = clickedMode;
+              setCheckedMode(activeMode);
+            });
+          }
+        }
+      });
+    });
+
+    // Handle Enforce Operating Hours / Operating Hours Enforced Button
     btnEnforce.addEventListener('click', () => {
-      isEnforced = !isEnforced;
-      if (isEnforced) {
+      // CASE 1: Not yet enforced -> Arming the selected mode
+      if (!isEnforced) {
+        const token = inputToken.value.trim();
+        const stagedMode = getCheckedMode();
+
+        if (!isValidToken(token)) {
+          showFeedback('Valid cont_... reference token required.');
+          return;
+        }
+        if (!stagedMode) {
+          showFeedback('Select an operating mode first.');
+          return;
+        }
+
+        isEnforced = true;
+        activeMode = stagedMode;
+        inputToken.readOnly = true;
+
         btnEnforce.className = 'btn-enforce btn-state-red';
         btnEnforce.innerText = 'Operating Hours Enforced';
+
+        // Custom Mode: no OTP generated or required
+        if (stagedMode === 'custom') {
+          originatedMode = null;
+          sessionOtp = null;
+          sessionExpiresAt = null;
+          return;
+        }
+
+        // Standard or Degraded Mode: generate 4-hour OTP and lock Originated Mode
+        originatedMode = stagedMode;
+        sessionOtp = generateSixDigitOtp();
+        sessionExpiresAt = Date.now() + FOUR_HOURS_MS;
+
+        otpGeneratedCode.innerText = sessionOtp;
+        modalOtpCreated.style.display = 'flex';
+        return;
+      }
+
+      // CASE 2: Already Enforced -> User clicked the red "Operating Hours Enforced" button
+      if (activeMode === 'custom') {
+        // Custom Mode turns off immediately with no OTP
+        resetToDisarmedState();
+        return;
+      }
+
+      // Check if the 4-hour OTP window has expired
+      if (sessionExpiresAt && Date.now() >= sessionExpiresAt) {
+        resetToDisarmedState();
+        modalSessionExpired.style.display = 'flex';
+        return;
+      }
+
+      // Within the 4-hour window: require OTP to turn off operating hours
+      promptForOtp(() => {
+        resetToDisarmedState();
+      });
+    });
+
+    // OTP Verification Modal Helpers
+    function promptForOtp(onSuccessCallback) {
+      pendingAuthorizedAction = onSuccessCallback;
+      inputOtpVerify.value = '';
+      otpErrorMsg.style.display = 'none';
+      modalOtpVerify.style.display = 'flex';
+      inputOtpVerify.focus();
+    }
+
+    btnSubmitOtp.addEventListener('click', () => {
+      const entered = inputOtpVerify.value.trim();
+      if (entered && entered === sessionOtp) {
+        modalOtpVerify.style.display = 'none';
+        if (typeof pendingAuthorizedAction === 'function') {
+          pendingAuthorizedAction();
+        }
+        pendingAuthorizedAction = null;
       } else {
-        btnEnforce.className = 'btn-enforce btn-state-blue';
-        btnEnforce.innerText = 'Enforce Operating Hours';
+        otpErrorMsg.style.display = 'block';
       }
     });
 
-    // Exclusive toggle behavior for the 3 mode switches
-    modeCheckboxes.forEach(box => {
-      box.addEventListener('change', () => {
-        if (box.checked) {
-          modeCheckboxes.forEach(other => {
-            if (other !== box) other.checked = false;
-          });
-        }
-      });
+    btnCancelOtp.addEventListener('click', () => {
+      modalOtpVerify.style.display = 'none';
+      pendingAuthorizedAction = null;
+    });
+
+    btnCloseOtpCreated.addEventListener('click', () => {
+      modalOtpCreated.style.display = 'none';
+    });
+
+    btnCloseExpired.addEventListener('click', () => {
+      modalSessionExpired.style.display = 'none';
     });
   </script>
 </body>
