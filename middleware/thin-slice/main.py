@@ -41,7 +41,7 @@ origins = [
     "chrome-extension://kegcmpbkmnbnmfolfhedpfbplbdgdfdp",
     "chrome-extension://cbfmhhcgloaeemleaaljeldfdemkccap",
     "chrome-extension://lchnpojncmpbbbdenjnjblggejbkehbp",
-    "https://digital-governance-framework.onrender.com"
+    "https://digital-governance-framework.onrender.com",
     "https://family.dgflabs.com"
 ]
 
