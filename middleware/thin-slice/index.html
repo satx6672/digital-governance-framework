@@ -233,6 +233,11 @@
       transition: background-color 0.15s ease;
     }
 
+    .btn-enforce:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+
     .btn-state-blue {
       background-color: var(--blue-btn);
     }
@@ -452,10 +457,22 @@
   </div>
 
   <script>
+    // 1. DGF Backend & Extension Configuration
+    const TARGET_API_BASE = "https://digital-governance-framework.onrender.com";
+    const DGF_API_KEY = "00e625db6549070e7198c9e24e42ef70";
+    // Optional: Paste your 32-char Chrome Extension ID here once loaded unpacked for direct local bridge
+    const BCU_EXTENSION_ID = "";
+    const STORAGE_KEY = "dgf_bcu_active_session";
+
+    // DOM Elements
     const inputToken = document.getElementById('device-token');
     const feedbackBanner = document.getElementById('feedback-banner');
     const btnEnforce = document.getElementById('btn-enforce');
     const modeCheckboxes = document.querySelectorAll('input[name="operating-mode"]');
+
+    const elIsolated = document.getElementById('metric-isolated');
+    const elBlocked = document.getElementById('metric-blocked');
+    const elData = document.getElementById('metric-data');
 
     // Modals
     const modalOtpCreated = document.getElementById('modal-otp-created');
@@ -481,8 +498,10 @@
     let sessionOtp = null;       // 6-digit string for Standard/Degraded sessions
     let sessionExpiresAt = null; // Timestamp (ms) when 4-hour lock expires
     let pendingAuthorizedAction = null;
+    let telemetryTimer = null;
 
-    function showFeedback(msg) {
+    function showFeedback(msg, isSuccess = false) {
+      feedbackBanner.style.color = isSuccess ? '#22c55e' : '#f43f5e';
       feedbackBanner.innerText = msg;
       feedbackBanner.style.display = 'block';
       setTimeout(() => {
@@ -511,8 +530,162 @@
       return Math.floor(100000 + Math.random() * 900000).toString();
     }
 
-    // Completely reset BCU to disarmed state and require a fresh token for the next session
-    function resetToDisarmedState() {
+    // Render Live Edge Telemetry Counters
+    function renderTelemetryValues(isolatedCount, blockedCount, dataSavedMB) {
+      elIsolated.innerText = String(isolatedCount || 0).padStart(4, '0');
+      elBlocked.innerText = String(blockedCount || 0).padStart(4, '0');
+      elData.innerText = Number(dataSavedMB || 0).toFixed(2) + ' MB';
+    }
+
+    // Save or Clear Session State in localStorage
+    function persistSessionState() {
+      if (!isEnforced) {
+        localStorage.removeItem(STORAGE_KEY);
+        return;
+      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        token: inputToken.value.trim(),
+        isEnforced,
+        activeMode,
+        originatedMode,
+        sessionOtp,
+        sessionExpiresAt
+      }));
+    }
+
+    // =========================================================================
+    // 2. BACKEND API CALLS (/toggle-state & /check-state) & TELEMETRY POLLING
+    // =========================================================================
+
+    async function pushModeToBackend(token, targetMode) {
+      try {
+        const response = await fetch(`${TARGET_API_BASE}/toggle-state`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${DGF_API_KEY}`
+          },
+          body: JSON.stringify({
+            continuity_ref: token,
+            is_degraded: targetMode !== 'none',
+            operating_mode: targetMode
+          })
+        });
+
+        if (response.status === 404) {
+          showFeedback('Token not found in database. Generate a valid token first.');
+          return { ok: false, status: 404 };
+        }
+        if (response.status === 410) {
+          showFeedback('This 4-hour reference token has expired. Generate a new token.');
+          return { ok: false, status: 410 };
+        }
+        if (!response.ok) {
+          showFeedback(`Server error (${response.status}).`);
+          return { ok: false, status: response.status };
+        }
+
+        const data = await response.json();
+        return { ok: true, data };
+      } catch (err) {
+        console.error('[BCU] /toggle-state network error:', err);
+        showFeedback('Unable to reach DGF server.');
+        return { ok: false, error: err };
+      }
+    }
+
+    async function fetchStateFromBackend(token) {
+      try {
+        const response = await fetch(
+          `${TARGET_API_BASE}/check-state?continuity_ref=${encodeURIComponent(token)}`,
+          {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${DGF_API_KEY}`
+            }
+          }
+        );
+
+        if (!response.ok) {
+          return { ok: false, status: response.status };
+        }
+        const data = await response.json();
+        return { ok: true, data };
+      } catch (err) {
+        return { ok: false, error: err };
+      }
+    }
+
+    function pollLiveTelemetry() {
+      if (!isEnforced) {
+        renderTelemetryValues(0, 0, 0);
+        return;
+      }
+
+      const token = inputToken.value.trim();
+
+      // 1. If Chrome Extension External Messaging is available & configured, query live local storage
+      if (BCU_EXTENSION_ID && window.chrome && chrome.runtime && chrome.runtime.sendMessage) {
+        try {
+          chrome.runtime.sendMessage(
+            BCU_EXTENSION_ID,
+            { type: 'GET_LIVE_TELEMETRY' },
+            (resp) => {
+              if (!chrome.runtime.lastError && resp) {
+                renderTelemetryValues(
+                  resp.payloadsIsolated || 1,
+                  resp.trackersBlocked || 0,
+                  resp.dataSavedMB || 0
+                );
+              }
+            }
+          );
+        } catch (e) {
+          // Ignore if opened outside Chrome extension context
+        }
+      }
+
+      // 2. Poll GET /check-state to verify session state on backend
+      if (isValidToken(token)) {
+        fetchStateFromBackend(token).then((res) => {
+          if (res.ok && res.data) {
+            if (typeof res.data.payloads_isolated === 'number' || typeof res.data.trackers_blocked === 'number') {
+              renderTelemetryValues(
+                res.data.payloads_isolated || 1,
+                res.data.trackers_blocked || 0,
+                res.data.data_saved_mb || 0
+              );
+            } else if (elIsolated.innerText === '0000') {
+              // At least 1 continuity payload is isolated for the active token
+              renderTelemetryValues(1, 0, 0);
+            }
+          }
+        });
+      }
+    }
+
+    function startTelemetryLoop() {
+      stopTelemetryLoop();
+      pollLiveTelemetry();
+      telemetryTimer = setInterval(pollLiveTelemetry, 5000);
+    }
+
+    function stopTelemetryLoop() {
+      if (telemetryTimer) {
+        clearInterval(telemetryTimer);
+        telemetryTimer = null;
+      }
+    }
+
+    // Disarm BCU, notify backend (operating_mode: 'none'), and reset UI
+    async function disarmOperatingHours(notifyBackend = true) {
+      const token = inputToken.value.trim();
+      if (notifyBackend && isValidToken(token)) {
+        await pushModeToBackend(token, 'none');
+      }
+
+      stopTelemetryLoop();
+
       isEnforced = false;
       activeMode = null;
       originatedMode = null;
@@ -526,12 +699,45 @@
 
       btnEnforce.className = 'btn-enforce btn-state-blue';
       btnEnforce.innerText = 'Enforce Operating Hours';
+
+      renderTelemetryValues(0, 0, 0);
+      persistSessionState();
     }
 
-    // Handle Mode Switch Toggles
+    // Restore active session on page load if one is in progress
+    window.addEventListener('DOMContentLoaded', async () => {
+      const rawSaved = localStorage.getItem(STORAGE_KEY);
+      if (!rawSaved) return;
+
+      try {
+        const saved = JSON.parse(rawSaved);
+        if (saved && saved.isEnforced && isValidToken(saved.token) && saved.activeMode) {
+          inputToken.value = saved.token;
+          inputToken.readOnly = true;
+          isEnforced = true;
+          activeMode = saved.activeMode;
+          originatedMode = saved.originatedMode;
+          sessionOtp = saved.sessionOtp;
+          sessionExpiresAt = saved.sessionExpiresAt;
+
+          setCheckedMode(activeMode);
+          btnEnforce.className = 'btn-enforce btn-state-red';
+          btnEnforce.innerText = 'Operating Hours Enforced';
+
+          startTelemetryLoop();
+        }
+      } catch (e) {
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    });
+
+    // =========================================================================
+    // 3. MODE SWITCHES & ENFORCE BUTTON INTERACTION LOGIC
+    // =========================================================================
+
     modeCheckboxes.forEach(box => {
-      box.addEventListener('change', () => {
-        // 1. Not enforced yet: simply stage mutually exclusive mode selection
+      box.addEventListener('change', async () => {
+        // 1. Not enforced yet: stage mutually exclusive mode selection
         if (!isEnforced) {
           if (box.checked) {
             modeCheckboxes.forEach(other => {
@@ -541,15 +747,14 @@
           return;
         }
 
+        const token = inputToken.value.trim();
+
         // 2. Currently in Custom Mode (No OTP involved)
         if (activeMode === 'custom') {
           if (box.value === 'custom' && !box.checked) {
-            // Directly toggling OFF Custom Mode shuts down enforcement with no OTP
-            resetToDisarmedState();
+            await disarmOperatingHours(true);
             return;
           }
-          // If trying to flip Standard or Degraded ON directly from active Custom Mode,
-          // revert toggle and inform user to turn off Custom Mode and use a new token
           setCheckedMode('custom');
           showFeedback('Turn off Custom Mode and enter a new token to start Standard or Degraded Mode.');
           return;
@@ -557,31 +762,28 @@
 
         // 3. Currently in a Standard or Degraded Session: check if 4-hour window expired
         if (sessionExpiresAt && Date.now() >= sessionExpiresAt) {
-          resetToDisarmedState();
+          await disarmOperatingHours(true);
           modalSessionExpired.style.display = 'flex';
           return;
         }
 
-        // Determine what the user is attempting to do with the toggles
         const clickedMode = box.value;
         const isTurningOffActive = (clickedMode === activeMode && !box.checked);
 
         if (isTurningOffActive) {
-          // Revert visual state immediately until OTP is verified
           setCheckedMode(activeMode);
-          promptForOtp(() => {
-            resetToDisarmedState();
+          promptForOtp(async () => {
+            await disarmOperatingHours(true);
           });
           return;
         }
 
         // User is toggling ON a different mode while in an active 4-hour OTP session
         if (box.checked) {
-          // Attempting to switch into Custom Mode mid-OTP-session requires OTP
           if (clickedMode === 'custom') {
             setCheckedMode(activeMode);
-            promptForOtp(() => {
-              resetToDisarmedState();
+            promptForOtp(async () => {
+              await disarmOperatingHours(true);
             });
             return;
           }
@@ -591,14 +793,26 @@
 
           // Free escalation (Degraded -> Standard) OR free return to the Originated Mode
           if (targetRank >= originatedRank) {
-            activeMode = clickedMode;
-            setCheckedMode(activeMode);
-          } else {
-            // Attempting to drop below the Originated Mode (Standard -> Degraded) requires OTP
-            setCheckedMode(activeMode);
-            promptForOtp(() => {
+            const res = await pushModeToBackend(token, clickedMode);
+            if (res.ok) {
               activeMode = clickedMode;
               setCheckedMode(activeMode);
+              persistSessionState();
+              showFeedback(`Switched to ${clickedMode.toUpperCase()} Mode.`, true);
+            } else {
+              setCheckedMode(activeMode);
+            }
+          } else {
+            // Dropping below Originated Mode (Standard -> Degraded) requires OTP
+            setCheckedMode(activeMode);
+            promptForOtp(async () => {
+              const res = await pushModeToBackend(token, clickedMode);
+              if (res.ok) {
+                activeMode = clickedMode;
+                setCheckedMode(activeMode);
+                persistSessionState();
+                showFeedback(`Authorized switch to ${clickedMode.toUpperCase()} Mode.`, true);
+              }
             });
           }
         }
@@ -606,8 +820,8 @@
     });
 
     // Handle Enforce Operating Hours / Operating Hours Enforced Button
-    btnEnforce.addEventListener('click', () => {
-      // CASE 1: Not yet enforced -> Arming the selected mode
+    btnEnforce.addEventListener('click', async () => {
+      // CASE 1: Not yet enforced -> Verify token on backend and arm the selected mode
       if (!isEnforced) {
         const token = inputToken.value.trim();
         const stagedMode = getCheckedMode();
@@ -618,6 +832,18 @@
         }
         if (!stagedMode) {
           showFeedback('Select an operating mode first.');
+          return;
+        }
+
+        btnEnforce.disabled = true;
+        btnEnforce.innerText = 'Transmitting...';
+
+        const result = await pushModeToBackend(token, stagedMode);
+        btnEnforce.disabled = false;
+
+        if (!result.ok) {
+          btnEnforce.className = 'btn-enforce btn-state-blue';
+          btnEnforce.innerText = 'Enforce Operating Hours';
           return;
         }
 
@@ -633,6 +859,8 @@
           originatedMode = null;
           sessionOtp = null;
           sessionExpiresAt = null;
+          persistSessionState();
+          startTelemetryLoop();
           return;
         }
 
@@ -641,6 +869,9 @@
         sessionOtp = generateSixDigitOtp();
         sessionExpiresAt = Date.now() + FOUR_HOURS_MS;
 
+        persistSessionState();
+        startTelemetryLoop();
+
         otpGeneratedCode.innerText = sessionOtp;
         modalOtpCreated.style.display = 'flex';
         return;
@@ -648,21 +879,20 @@
 
       // CASE 2: Already Enforced -> User clicked the red "Operating Hours Enforced" button
       if (activeMode === 'custom') {
-        // Custom Mode turns off immediately with no OTP
-        resetToDisarmedState();
+        await disarmOperatingHours(true);
         return;
       }
 
       // Check if the 4-hour OTP window has expired
       if (sessionExpiresAt && Date.now() >= sessionExpiresAt) {
-        resetToDisarmedState();
+        await disarmOperatingHours(true);
         modalSessionExpired.style.display = 'flex';
         return;
       }
 
       // Within the 4-hour window: require OTP to turn off operating hours
-      promptForOtp(() => {
-        resetToDisarmedState();
+      promptForOtp(async () => {
+        await disarmOperatingHours(true);
       });
     });
 
@@ -675,12 +905,12 @@
       inputOtpVerify.focus();
     }
 
-    btnSubmitOtp.addEventListener('click', () => {
+    btnSubmitOtp.addEventListener('click', async () => {
       const entered = inputOtpVerify.value.trim();
       if (entered && entered === sessionOtp) {
         modalOtpVerify.style.display = 'none';
         if (typeof pendingAuthorizedAction === 'function') {
-          pendingAuthorizedAction();
+          await pendingAuthorizedAction();
         }
         pendingAuthorizedAction = null;
       } else {
