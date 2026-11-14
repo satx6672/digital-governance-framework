@@ -41,6 +41,7 @@ origins = [
     "chrome-extension://kegcmpbkmnbnmfolfhedpfbplbdgdfdp",
     "chrome-extension://cbfmhhcgloaeemleaaljeldfdemkccap",
     "https://digital-governance-framework.onrender.com"
+    "https://family.dgflabs.com"
 ]
 
 # Pull keys securely from Render Environment Variables
