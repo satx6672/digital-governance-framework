@@ -123,7 +123,7 @@
       border-bottom: 1px solid var(--border-inner);
     }
 
-    .mode-row:last-child {
+    .mode-row:last-of-type {
       border-bottom: none;
     }
 
@@ -174,6 +174,70 @@
 
     .switch input:checked + .slider:before {
       transform: translateX(22px);
+    }
+
+    /* Custom Mode 20-Site Drawer */
+    .custom-drawer {
+      display: none;
+      border-top: 1px solid var(--border-inner);
+      padding: 14px 0 10px 0;
+    }
+
+    .custom-drawer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 10px;
+    }
+
+    .custom-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 10px;
+      margin-bottom: 12px;
+    }
+
+    .site-check-label {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      color: #cbd5e1;
+      cursor: pointer;
+      user-select: none;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .site-check-label input[type="checkbox"] {
+      accent-color: var(--blue-btn);
+      width: 14px;
+      height: 14px;
+      margin: 0;
+      cursor: pointer;
+    }
+
+    .custom-extra-input {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border-inner);
+      background-color: var(--bg-input);
+      color: var(--text-main);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      outline: none;
+    }
+
+    .custom-extra-input:focus {
+      border-color: var(--blue-btn);
     }
 
     /* Card 3: Live Edge Telemetry (Top) & Single Action/Status Toggle Button (Bottom) */
@@ -254,7 +318,7 @@
       text-align: center;
     }
 
-    /* Modals (OTP Generation, OTP Override Prompt, & Session Expired Notice) */
+    /* Modals */
     .modal-overlay {
       display: none;
       position: fixed;
@@ -367,7 +431,7 @@
       <div id="feedback-banner" class="feedback-msg"></div>
     </div>
 
-    <!-- Card 2 (Middle): Mode Switches -->
+    <!-- Card 2 (Middle): Mode Switches & Custom Mode 20-Site Builder -->
     <div class="card modes-card">
       <div class="mode-row">
         <span class="mode-label">Standard Mode</span>
@@ -389,6 +453,23 @@
           <input type="checkbox" name="operating-mode" value="custom">
           <span class="slider"></span>
         </label>
+      </div>
+
+      <!-- Custom Mode Builder Drawer (Visible when Custom Mode is toggled ON) -->
+      <div id="custom-drawer" class="custom-drawer">
+        <div class="custom-drawer-header">
+          <span>Select Sites to Clamp</span>
+          <span id="custom-count-label">0 selected</span>
+        </div>
+        <div id="custom-sites-grid" class="custom-grid"></div>
+        <input
+          type="text"
+          id="custom-extra-domain"
+          class="custom-extra-input"
+          placeholder="+ Optional domain (e.g. miniclip.com)"
+          autocomplete="off"
+          spellcheck="false"
+        >
       </div>
     </div>
 
@@ -457,18 +538,35 @@
   </div>
 
   <script>
-    // 1. DGF Backend & Extension Configuration
     const TARGET_API_BASE = "https://digital-governance-framework.onrender.com";
     const DGF_API_KEY = "00e625db6549070e7198c9e24e42ef70";
-    // Optional: Paste your 32-char Chrome Extension ID here once loaded unpacked for direct local bridge
-    const BCU_EXTENSION_ID = "";
+    const BCU_EXTENSION_ID = "lchnpojncmpbbbdenjnjblggejbkehbp";
     const STORAGE_KEY = "dgf_bcu_active_session";
+
+    // Master List of 20 Distraction Sites for Custom Mode Selection
+    const MASTER_20_SITES = [
+      "youtube.com", "tiktok.com",
+      "instagram.com", "snapchat.com",
+      "discord.com", "twitch.tv",
+      "roblox.com", "reddit.com",
+      "x.com", "facebook.com",
+      "netflix.com", "disneyplus.com",
+      "pinterest.com", "character.ai",
+      "poki.com", "crazygames.com",
+      "coolmathgames.com", "kick.com",
+      "threads.net", "9gag.com"
+    ];
 
     // DOM Elements
     const inputToken = document.getElementById('device-token');
     const feedbackBanner = document.getElementById('feedback-banner');
     const btnEnforce = document.getElementById('btn-enforce');
     const modeCheckboxes = document.querySelectorAll('input[name="operating-mode"]');
+
+    const customDrawer = document.getElementById('custom-drawer');
+    const customSitesGrid = document.getElementById('custom-sites-grid');
+    const customCountLabel = document.getElementById('custom-count-label');
+    const customExtraInput = document.getElementById('custom-extra-domain');
 
     const elIsolated = document.getElementById('metric-isolated');
     const elBlocked = document.getElementById('metric-blocked');
@@ -493,12 +591,68 @@
     const MODE_RANK = { degraded: 1, standard: 2 };
 
     let isEnforced = false;
-    let activeMode = null;       // 'standard' | 'degraded' | 'custom' | null
-    let originatedMode = null;   // 'standard' | 'degraded' | null (for OTP sessions)
-    let sessionOtp = null;       // 6-digit string for Standard/Degraded sessions
-    let sessionExpiresAt = null; // Timestamp (ms) when 4-hour lock expires
+    let activeMode = null;
+    let originatedMode = null;
+    let sessionOtp = null;
+    let sessionExpiresAt = null;
     let pendingAuthorizedAction = null;
     let telemetryTimer = null;
+
+    // Render the 20 checkboxes inside Custom Mode Drawer
+    function buildCustomChecklist() {
+      customSitesGrid.innerHTML = '';
+      MASTER_20_SITES.forEach(domain => {
+        const label = document.createElement('label');
+        label.className = 'site-check-label';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.value = domain;
+        cb.className = 'custom-site-cb';
+        cb.addEventListener('change', updateCustomCountLabel);
+        label.appendChild(cb);
+        label.appendChild(document.createTextNode(domain));
+        customSitesGrid.appendChild(label);
+      });
+      customExtraInput.addEventListener('input', updateCustomCountLabel);
+    }
+
+    function getSelectedCustomDomains() {
+      const checked = Array.from(document.querySelectorAll('.custom-site-cb:checked')).map(cb => cb.value);
+      const extraRaw = customExtraInput.value.trim().toLowerCase()
+        .replace(/^https?:\/\//, '')
+        .replace(/^www\./, '')
+        .split('/')[0];
+
+      if (extraRaw && extraRaw.includes('.') && !checked.includes(extraRaw)) {
+        checked.push(extraRaw);
+      }
+      return checked;
+    }
+
+    function setSelectedCustomDomains(domainsArray = []) {
+      const set = new Set(domainsArray);
+      document.querySelectorAll('.custom-site-cb').forEach(cb => {
+        cb.checked = set.has(cb.value);
+        if (cb.checked) set.delete(cb.value);
+      });
+      const remaining = Array.from(set);
+      customExtraInput.value = remaining.length > 0 ? remaining[0] : '';
+      updateCustomCountLabel();
+    }
+
+    function setCustomInputsDisabled(disabled) {
+      document.querySelectorAll('.custom-site-cb').forEach(cb => {
+        cb.disabled = disabled;
+      });
+      customExtraInput.disabled = disabled;
+    }
+
+    function updateCustomCountLabel() {
+      const count = getSelectedCustomDomains().length;
+      customCountLabel.innerText = `${count} selected`;
+    }
+
+    buildCustomChecklist();
 
     function showFeedback(msg, isSuccess = false) {
       feedbackBanner.style.color = isSuccess ? '#22c55e' : '#f43f5e';
@@ -520,6 +674,7 @@
       modeCheckboxes.forEach(box => {
         box.checked = (box.value === modeValue);
       });
+      customDrawer.style.display = (modeValue === 'custom') ? 'block' : 'none';
     }
 
     function isValidToken(token) {
@@ -530,14 +685,12 @@
       return Math.floor(100000 + Math.random() * 900000).toString();
     }
 
-    // Render Live Edge Telemetry Counters
     function renderTelemetryValues(isolatedCount, blockedCount, dataSavedMB) {
       elIsolated.innerText = String(isolatedCount || 0).padStart(4, '0');
       elBlocked.innerText = String(blockedCount || 0).padStart(4, '0');
       elData.innerText = Number(dataSavedMB || 0).toFixed(2) + ' MB';
     }
 
-    // Save or Clear Session State in localStorage
     function persistSessionState() {
       if (!isEnforced) {
         localStorage.removeItem(STORAGE_KEY);
@@ -549,15 +702,22 @@
         activeMode,
         originatedMode,
         sessionOtp,
-        sessionExpiresAt
+        sessionExpiresAt,
+        customDomains: getSelectedCustomDomains()
       }));
     }
 
-    // =========================================================================
-    // 2. BACKEND API CALLS (/toggle-state & /check-state) & TELEMETRY POLLING
-    // =========================================================================
+    function notifyExtensionInstantSync() {
+      if (BCU_EXTENSION_ID && window.chrome && chrome.runtime && chrome.runtime.sendMessage) {
+        try {
+          chrome.runtime.sendMessage(BCU_EXTENSION_ID, { type: 'FORCE_STATE_SYNC' }, () => {
+            void chrome.runtime.lastError;
+          });
+        } catch (e) {}
+      }
+    }
 
-    async function pushModeToBackend(token, targetMode) {
+    async function pushModeToBackend(token, targetMode, customDomains = []) {
       try {
         const response = await fetch(`${TARGET_API_BASE}/toggle-state`, {
           method: 'POST',
@@ -568,7 +728,8 @@
           body: JSON.stringify({
             continuity_ref: token,
             is_degraded: targetMode !== 'none',
-            operating_mode: targetMode
+            operating_mode: targetMode,
+            custom_domains: customDomains
           })
         });
 
@@ -586,6 +747,7 @@
         }
 
         const data = await response.json();
+        notifyExtensionInstantSync();
         return { ok: true, data };
       } catch (err) {
         console.error('[BCU] /toggle-state network error:', err);
@@ -624,7 +786,6 @@
 
       const token = inputToken.value.trim();
 
-      // 1. If Chrome Extension External Messaging is available & configured, query live local storage
       if (BCU_EXTENSION_ID && window.chrome && chrome.runtime && chrome.runtime.sendMessage) {
         try {
           chrome.runtime.sendMessage(
@@ -640,25 +801,13 @@
               }
             }
           );
-        } catch (e) {
-          // Ignore if opened outside Chrome extension context
-        }
+        } catch (e) {}
       }
 
-      // 2. Poll GET /check-state to verify session state on backend
       if (isValidToken(token)) {
         fetchStateFromBackend(token).then((res) => {
-          if (res.ok && res.data) {
-            if (typeof res.data.payloads_isolated === 'number' || typeof res.data.trackers_blocked === 'number') {
-              renderTelemetryValues(
-                res.data.payloads_isolated || 1,
-                res.data.trackers_blocked || 0,
-                res.data.data_saved_mb || 0
-              );
-            } else if (elIsolated.innerText === '0000') {
-              // At least 1 continuity payload is isolated for the active token
-              renderTelemetryValues(1, 0, 0);
-            }
+          if (res.ok && res.data && elIsolated.innerText === '0000') {
+            renderTelemetryValues(1, 0, 0);
           }
         });
       }
@@ -677,11 +826,10 @@
       }
     }
 
-    // Disarm BCU, notify backend (operating_mode: 'none'), and reset UI
     async function disarmOperatingHours(notifyBackend = true) {
       const token = inputToken.value.trim();
       if (notifyBackend && isValidToken(token)) {
-        await pushModeToBackend(token, 'none');
+        await pushModeToBackend(token, 'none', []);
       }
 
       stopTelemetryLoop();
@@ -694,6 +842,9 @@
       pendingAuthorizedAction = null;
 
       setCheckedMode(null);
+      setSelectedCustomDomains([]);
+      setCustomInputsDisabled(false);
+
       inputToken.value = '';
       inputToken.readOnly = false;
 
@@ -705,7 +856,7 @@
     }
 
     // Restore active session on page load if one is in progress
-    window.addEventListener('DOMContentLoaded', async () => {
+    window.addEventListener('DOMContentLoaded', () => {
       const rawSaved = localStorage.getItem(STORAGE_KEY);
       if (!rawSaved) return;
 
@@ -721,6 +872,11 @@
           sessionExpiresAt = saved.sessionExpiresAt;
 
           setCheckedMode(activeMode);
+          if (activeMode === 'custom' && Array.isArray(saved.customDomains)) {
+            setSelectedCustomDomains(saved.customDomains);
+            setCustomInputsDisabled(true);
+          }
+
           btnEnforce.className = 'btn-enforce btn-state-red';
           btnEnforce.innerText = 'Operating Hours Enforced';
 
@@ -731,25 +887,24 @@
       }
     });
 
-    // =========================================================================
-    // 3. MODE SWITCHES & ENFORCE BUTTON INTERACTION LOGIC
-    // =========================================================================
-
+    // Mode Switch Toggles
     modeCheckboxes.forEach(box => {
       box.addEventListener('change', async () => {
-        // 1. Not enforced yet: stage mutually exclusive mode selection
         if (!isEnforced) {
           if (box.checked) {
             modeCheckboxes.forEach(other => {
               if (other !== box) other.checked = false;
             });
+            customDrawer.style.display = (box.value === 'custom') ? 'block' : 'none';
+          } else {
+            customDrawer.style.display = 'none';
           }
           return;
         }
 
         const token = inputToken.value.trim();
 
-        // 2. Currently in Custom Mode (No OTP involved)
+        // Currently in Custom Mode (No OTP involved)
         if (activeMode === 'custom') {
           if (box.value === 'custom' && !box.checked) {
             await disarmOperatingHours(true);
@@ -760,7 +915,7 @@
           return;
         }
 
-        // 3. Currently in a Standard or Degraded Session: check if 4-hour window expired
+        // Standard or Degraded Session: check if 4-hour window expired
         if (sessionExpiresAt && Date.now() >= sessionExpiresAt) {
           await disarmOperatingHours(true);
           modalSessionExpired.style.display = 'flex';
@@ -778,7 +933,6 @@
           return;
         }
 
-        // User is toggling ON a different mode while in an active 4-hour OTP session
         if (box.checked) {
           if (clickedMode === 'custom') {
             setCheckedMode(activeMode);
@@ -791,9 +945,8 @@
           const targetRank = MODE_RANK[clickedMode];
           const originatedRank = MODE_RANK[originatedMode];
 
-          // Free escalation (Degraded -> Standard) OR free return to the Originated Mode
           if (targetRank >= originatedRank) {
-            const res = await pushModeToBackend(token, clickedMode);
+            const res = await pushModeToBackend(token, clickedMode, []);
             if (res.ok) {
               activeMode = clickedMode;
               setCheckedMode(activeMode);
@@ -803,10 +956,9 @@
               setCheckedMode(activeMode);
             }
           } else {
-            // Dropping below Originated Mode (Standard -> Degraded) requires OTP
             setCheckedMode(activeMode);
             promptForOtp(async () => {
-              const res = await pushModeToBackend(token, clickedMode);
+              const res = await pushModeToBackend(token, clickedMode, []);
               if (res.ok) {
                 activeMode = clickedMode;
                 setCheckedMode(activeMode);
@@ -819,9 +971,8 @@
       });
     });
 
-    // Handle Enforce Operating Hours / Operating Hours Enforced Button
+    // Enforce Operating Hours / Operating Hours Enforced Button
     btnEnforce.addEventListener('click', async () => {
-      // CASE 1: Not yet enforced -> Verify token on backend and arm the selected mode
       if (!isEnforced) {
         const token = inputToken.value.trim();
         const stagedMode = getCheckedMode();
@@ -835,10 +986,16 @@
           return;
         }
 
+        const customDomains = (stagedMode === 'custom') ? getSelectedCustomDomains() : [];
+        if (stagedMode === 'custom' && customDomains.length === 0) {
+          showFeedback('Select at least 1 site (or enter a domain) for Custom Mode.');
+          return;
+        }
+
         btnEnforce.disabled = true;
         btnEnforce.innerText = 'Transmitting...';
 
-        const result = await pushModeToBackend(token, stagedMode);
+        const result = await pushModeToBackend(token, stagedMode, customDomains);
         btnEnforce.disabled = false;
 
         if (!result.ok) {
@@ -854,17 +1011,16 @@
         btnEnforce.className = 'btn-enforce btn-state-red';
         btnEnforce.innerText = 'Operating Hours Enforced';
 
-        // Custom Mode: no OTP generated or required
         if (stagedMode === 'custom') {
           originatedMode = null;
           sessionOtp = null;
           sessionExpiresAt = null;
+          setCustomInputsDisabled(true);
           persistSessionState();
           startTelemetryLoop();
           return;
         }
 
-        // Standard or Degraded Mode: generate 4-hour OTP and lock Originated Mode
         originatedMode = stagedMode;
         sessionOtp = generateSixDigitOtp();
         sessionExpiresAt = Date.now() + FOUR_HOURS_MS;
@@ -877,26 +1033,23 @@
         return;
       }
 
-      // CASE 2: Already Enforced -> User clicked the red "Operating Hours Enforced" button
+      // Already Enforced -> User clicked the red "Operating Hours Enforced" button
       if (activeMode === 'custom') {
         await disarmOperatingHours(true);
         return;
       }
 
-      // Check if the 4-hour OTP window has expired
       if (sessionExpiresAt && Date.now() >= sessionExpiresAt) {
         await disarmOperatingHours(true);
         modalSessionExpired.style.display = 'flex';
         return;
       }
 
-      // Within the 4-hour window: require OTP to turn off operating hours
       promptForOtp(async () => {
         await disarmOperatingHours(true);
       });
     });
 
-    // OTP Verification Modal Helpers
     function promptForOtp(onSuccessCallback) {
       pendingAuthorizedAction = onSuccessCallback;
       inputOtpVerify.value = '';

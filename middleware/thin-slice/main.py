@@ -20,18 +20,17 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import text
 from sqlalchemy.orm import declarative_base
 
-# Note: If your main.py uses 'app = FastAPI()', change '@router' to '@app' below
 router = APIRouter()
 
-# 1. Define the startup logic (creating tables) BEFORE the app is created
+# 1. Define the startup logic BEFORE the app is created
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
-        # This builds your PostgreSQL tables if they don't exist yet
         await conn.run_sync(Base.metadata.create_all)
+    await init_db()
     yield
 
-# 2. Now Python knows what 'lifespan' is when it creates the app
+# 2. Create FastAPI app with lifespan
 app = FastAPI(lifespan=lifespan)
 app.include_router(router)
 
@@ -100,7 +99,6 @@ async def stripe_webhook(request: Request):
 @app.get("/license/{uuid}")
 async def check_license(uuid: str, product_id: str = "dgf_middleware"):
     try:
-        # Create a clean copy of the database URL specifically for psycopg2 (stripping async prefixes)
         sync_db_url = os.getenv("DATABASE_URL", "").replace("postgresql+asyncpg://", "postgresql://", 1)
 
         conn = psycopg2.connect(sync_db_url)
@@ -233,7 +231,8 @@ async def init_db():
                 actor_type TEXT,
                 degraded INTEGER DEFAULT 0,
                 product_id TEXT NOT NULL DEFAULT 'dgf_middleware',
-                operating_mode TEXT DEFAULT 'none'
+                operating_mode TEXT DEFAULT 'none',
+                custom_domains TEXT DEFAULT ''
             )
         """))
 
@@ -241,6 +240,10 @@ async def init_db():
             await conn.execute(text("""
                 ALTER TABLE continuity_references
                 ADD COLUMN IF NOT EXISTS operating_mode TEXT DEFAULT 'none'
+            """))
+            await conn.execute(text("""
+                ALTER TABLE continuity_references
+                ADD COLUMN IF NOT EXISTS custom_domains TEXT DEFAULT ''
             """))
         except Exception:
             pass
@@ -308,6 +311,7 @@ class ToggleStateRequest(BaseModel):
     continuity_ref: str
     is_degraded: Optional[bool] = False
     operating_mode: Optional[str] = None
+    custom_domains: Optional[list[str]] = None
 
 class ACQRequest(BaseModel):
     srv_id: Optional[str] = None
@@ -435,7 +439,7 @@ if DEBUG_MODE:
     @app.get("/debug/continuity")
     async def list_continuity_references(_: None = Depends(require_api_key), db: AsyncSession = Depends(get_db)):
         result = await db.execute(text("""
-            SELECT continuity_ref, expires_at, created_at, actor_type, degraded, operating_mode
+            SELECT continuity_ref, expires_at, created_at, actor_type, degraded, operating_mode, custom_domains
             FROM continuity_references
             ORDER BY created_at DESC
         """))
@@ -448,7 +452,8 @@ if DEBUG_MODE:
                 "created_at": row[2],
                 "actor_type": row[3],
                 "degraded": bool(row[4]),
-                "operating_mode": row[5] or "none"
+                "operating_mode": row[5] or "none",
+                "custom_domains": row[6].split(",") if row[6] else []
             })
         return {"count": len(results), "items": results}
 
@@ -466,7 +471,6 @@ def read_root():
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def parent_dashboard():
-    # Dynamically get the directory where main.py is currently running
     current_dir = os.path.dirname(os.path.abspath(__file__))
     file_path = os.path.join(current_dir, "index.html")
 
@@ -517,13 +521,12 @@ async def establish_continuity(
     now = datetime.now(timezone.utc)
     expires_at = now + timedelta(hours=4)
 
-    # Store in database asynchronously
     await db.execute(
         text("""
             INSERT INTO continuity_references (
-                continuity_ref, expires_at, created_at, actor_type, degraded, product_id, operating_mode
+                continuity_ref, expires_at, created_at, actor_type, degraded, product_id, operating_mode, custom_domains
             )
-            VALUES (:ref, :exp, :creat, :actor, :deg, :prod_id, :mode)
+            VALUES (:ref, :exp, :creat, :actor, :deg, :prod_id, :mode, :custom)
         """),
         {
             "ref": continuity_ref,
@@ -532,7 +535,8 @@ async def establish_continuity(
             "actor": "human",
             "deg": 0,
             "prod_id": request.product_id or "dgf_middleware",
-            "mode": "none"
+            "mode": "none",
+            "custom": ""
         }
     )
     await db.commit()
@@ -550,7 +554,6 @@ async def emit_srv(
     _: None = Depends(require_api_key),
     db: AsyncSession = Depends(get_db)
 ):
-    # 1. Check that the Continuity Reference exists and is not expired
     result = await db.execute(
         text("""
         SELECT expires_at FROM continuity_references
@@ -569,7 +572,6 @@ async def emit_srv(
     if now > expires_at:
         raise HTTPException(status_code=410, detail="Continuity Reference has expired")
 
-    # 2. Create and store the SRV
     srv_id = f"srv_{uuid.uuid4().hex[:16]}"
     created_at = now.isoformat().replace("+00:00", "Z")
 
@@ -597,7 +599,7 @@ async def emit_srv(
 
     return {
         "srv_id": srv_id,
-        "dampened_confidence": request.confidence * 0.85  # simple normal-mode dampener for now
+        "dampened_confidence": request.confidence * 0.85
     }
 
 @app.post("/provisional")
@@ -606,7 +608,6 @@ async def issue_provisional(
     _: None = Depends(require_api_key),
     db: AsyncSession = Depends(get_db)
 ):
-    # 1. Check Continuity Reference exists and is not expired
     result = await db.execute(
         text("""
         SELECT expires_at FROM continuity_references
@@ -625,11 +626,9 @@ async def issue_provisional(
     if now > expires_at:
         raise HTTPException(status_code=410, detail="Continuity Reference has expired")
 
-    # 2. Basic check that at least one originating SRV exists
     if not request.originating_srv_ids:
         raise HTTPException(status_code=400, detail="At least one originating_srv_id is required")
 
-    # 3. Create and store the Provisional
     provisional_id = f"prov_{uuid.uuid4().hex[:16]}"
     created_at = now.isoformat().replace("+00:00", "Z")
     srv_ids_str = ",".join(request.originating_srv_ids)
@@ -716,10 +715,10 @@ async def check_emission_state(
     _: None = Depends(require_api_key),
     db: AsyncSession = Depends(get_db)
 ):
-    # The extension polls this endpoint to get the current operating mode and degraded state
     result = await db.execute(
         text("""
-        SELECT degraded, operating_mode, expires_at FROM continuity_references
+        SELECT degraded, operating_mode, expires_at, custom_domains
+        FROM continuity_references
         WHERE continuity_ref = :ref
         """),
         {"ref": continuity_ref}
@@ -729,11 +728,15 @@ async def check_emission_state(
     if row is None:
         raise HTTPException(status_code=404, detail="Continuity Reference not found")
 
+    raw_custom = row[3] or ""
+    custom_list = [d.strip() for d in raw_custom.split(",") if d.strip()]
+
     return {
         "continuity_ref": continuity_ref,
         "is_degraded": bool(row[0]),
         "operating_mode": row[1] or "none",
-        "expires_at": row[2]
+        "expires_at": row[2],
+        "custom_domains": custom_list
     }
 
 @app.post("/toggle-state")
@@ -742,7 +745,6 @@ async def toggle_emission_state(
     _: None = Depends(require_api_key),
     db: AsyncSession = Depends(get_db)
 ):
-    # 1. Verify the session token exists
     result = await db.execute(
         text("""
         SELECT continuity_ref, expires_at FROM continuity_references
@@ -754,7 +756,6 @@ async def toggle_emission_state(
     if row is None:
         raise HTTPException(status_code=404, detail="Continuity Reference not found")
 
-    # Determine the requested operating mode ('standard', 'degraded', 'custom', or 'none')
     if request.operating_mode is not None:
         mode = request.operating_mode.lower()
     else:
@@ -763,24 +764,32 @@ async def toggle_emission_state(
     if mode not in ("standard", "degraded", "custom", "none"):
         raise HTTPException(status_code=400, detail="Invalid operating_mode")
 
-    # When arming or switching an active mode, ensure the 4-hour token has not expired
     if mode != "none":
         expires_at = datetime.fromisoformat(row[1].replace("Z", "+00:00"))
         now = datetime.now(timezone.utc)
         if now > expires_at:
             raise HTTPException(status_code=410, detail="Continuity Reference has expired")
 
-    # 2. Update the operating_mode and degraded state in PostgreSQL
+    # Sanitize and store custom_domains if Custom Mode is selected
+    clean_domains = []
+    if mode == "custom" and request.custom_domains:
+        for d in request.custom_domains:
+            cleaned = d.strip().lower().replace("https://", "").replace("http://", "").replace("www.", "").split("/")[0]
+            if cleaned and "." in cleaned and cleaned not in clean_domains:
+                clean_domains.append(cleaned)
+    custom_str = ",".join(clean_domains) if mode == "custom" else ""
+
     degraded_int = 0 if mode == "none" else 1
     await db.execute(
         text("""
         UPDATE continuity_references
-        SET degraded = :deg, operating_mode = :mode
+        SET degraded = :deg, operating_mode = :mode, custom_domains = :custom
         WHERE continuity_ref = :ref
         """),
         {
             "deg": degraded_int,
             "mode": mode,
+            "custom": custom_str,
             "ref": request.continuity_ref
         }
     )
@@ -791,6 +800,7 @@ async def toggle_emission_state(
         "continuity_ref": request.continuity_ref,
         "is_degraded": bool(degraded_int),
         "operating_mode": mode,
+        "custom_domains": clean_domains,
         "new_state": mode
     }
 
@@ -800,7 +810,6 @@ async def issue_acq(
     _: None = Depends(require_api_key),
     db: AsyncSession = Depends(get_db)
 ):
-    # Continuity must exist and not be expired
     result = await db.execute(
         text("""
         SELECT expires_at FROM continuity_references
@@ -818,7 +827,6 @@ async def issue_acq(
     if now > expires_at:
         raise HTTPException(status_code=410, detail="Continuity Reference has expired")
 
-    # Thin policy: if srv_id provided, require it to exist
     if request.srv_id:
         srv_result = await db.execute(
             text("SELECT srv_id FROM srvs WHERE srv_id = :srv_id"),
