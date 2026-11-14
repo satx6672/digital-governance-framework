@@ -304,11 +304,6 @@ async def init_db():
             CREATE INDEX IF NOT EXISTS idx_provisionals_target_passport ON provisionals(target_passport_ref)
         """))
 
-# 5. Trigger database creation on server startup
-@app.on_event("startup")
-async def on_startup():
-    await init_db()
-
 class ToggleStateRequest(BaseModel):
     continuity_ref: str
     is_degraded: Optional[bool] = False
